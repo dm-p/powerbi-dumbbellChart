@@ -23,11 +23,11 @@
 *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 *  THE SOFTWARE.
 */
-"use strict";
+'use strict';
 
-import "core-js/stable";
-import "./../style/visual.less";
-import powerbi from "powerbi-visuals-api";
+import 'core-js/stable';
+import './../style/visual.less';
+import powerbi from 'powerbi-visuals-api';
 import VisualConstructorOptions = powerbi.extensibility.visual.VisualConstructorOptions;
 import VisualUpdateOptions = powerbi.extensibility.visual.VisualUpdateOptions;
 import IVisual = powerbi.extensibility.visual.IVisual;
@@ -36,7 +36,9 @@ import VisualObjectInstance = powerbi.VisualObjectInstance;
 import DataView = powerbi.DataView;
 import VisualObjectInstanceEnumerationObject = powerbi.VisualObjectInstanceEnumerationObject;
 
-import { VisualSettings } from "./settings";
+import { VisualSettings } from './settings';
+import { mapViewModel } from './viewModel';
+
 export class Visual implements IVisual {
     private target: HTMLElement;
     private updateCount: number;
@@ -48,9 +50,9 @@ export class Visual implements IVisual {
         this.target = options.element;
         this.updateCount = 0;
         if (document) {
-            const new_p: HTMLElement = document.createElement("p");
-            new_p.appendChild(document.createTextNode("Update count:"));
-            const new_em: HTMLElement = document.createElement("em");
+            const new_p: HTMLElement = document.createElement('p');
+            new_p.appendChild(document.createTextNode('Update count:'));
+            const new_em: HTMLElement = document.createElement('em');
             this.textNode = document.createTextNode(this.updateCount.toString());
             new_em.appendChild(this.textNode);
             new_p.appendChild(new_em);
@@ -61,9 +63,12 @@ export class Visual implements IVisual {
     public update(options: VisualUpdateOptions) {
         this.settings = Visual.parseSettings(options && options.dataViews && options.dataViews[0]);
         console.log('Visual update', options);
-        if (this.textNode) {
-            this.textNode.textContent = (this.updateCount++).toString();
-        }
+        
+        // Map static data into our view model
+            const viewModel = mapViewModel(this.settings);
+        
+        // Inspect the view model in the browser console
+            console.log(viewModel);
     }
 
     private static parseSettings(dataView: DataView): VisualSettings {
