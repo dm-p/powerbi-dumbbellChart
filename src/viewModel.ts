@@ -33,7 +33,7 @@ import { VisualSettings } from './settings';
 /**
  * Create a view model of static data we can use to prototype our visual's look.
  *
- * @param settings  - pasrsed visual settings.
+ * @param settings  - parsed visual settings.
  */
     export function mapViewModel(settings: VisualSettings): IViewModel {
         return {
