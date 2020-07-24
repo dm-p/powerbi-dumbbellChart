@@ -36,28 +36,43 @@ import VisualObjectInstance = powerbi.VisualObjectInstance;
 import DataView = powerbi.DataView;
 import VisualObjectInstanceEnumerationObject = powerbi.VisualObjectInstanceEnumerationObject;
 
+import * as d3Select from 'd3-selection';
+
 import { VisualSettings } from './settings';
 import { mapViewModel } from './viewModel';
 
 export class Visual implements IVisual {
-    private target: HTMLElement;
-    private updateCount: number;
-    private settings: VisualSettings;
-    private textNode: Text;
+    // Visual's main (root) element
+        private target: HTMLElement;
+    // SVG element for the entire chart; will be a child of the main visual element
+        private chartContainer: d3.Selection<SVGElement, any, any, any>;
+    // SVG group element to consolidate the category axis elements
+        private categoryAxisContainer: d3.Selection<SVGElement, any, any, any>;
+    // SVG group element to consolidate the value axis elements
+        private valueAxisContainer: d3.Selection<SVGElement, any, any, any>;
+    // SVG group element to consolidate the visual data elements
+        private plotContainer: d3.Selection<SVGElement, any, any, any>;
+    // Parsed visual settings
+        private settings: VisualSettings;
 
     constructor(options: VisualConstructorOptions) {
         console.log('Visual constructor', options);
         this.target = options.element;
-        this.updateCount = 0;
-        if (document) {
-            const new_p: HTMLElement = document.createElement('p');
-            new_p.appendChild(document.createTextNode('Update count:'));
-            const new_em: HTMLElement = document.createElement('em');
-            this.textNode = document.createTextNode(this.updateCount.toString());
-            new_em.appendChild(this.textNode);
-            new_p.appendChild(new_em);
-            this.target.appendChild(new_p);
-        }
+        // Create our fixed elements, as these only need to be done once
+            this.chartContainer = d3Select.select(this.target)
+                .append('svg')
+                    .attr('id', 'dumbbellChartContainer');
+            this.categoryAxisContainer = this.chartContainer
+                .append('g')
+                    .classed('categoryAxis', true)
+                    .classed('axis', true);
+            this.valueAxisContainer = this.chartContainer
+                .append('g')
+                    .classed('valueAxis', true)
+                    .classed('axis', true);
+            this.plotContainer = this.chartContainer
+                .append('g')
+                    .classed('plotArea', true);
     }
 
     public update(options: VisualUpdateOptions) {
