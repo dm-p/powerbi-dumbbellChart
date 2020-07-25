@@ -78,6 +78,12 @@ export class Visual implements IVisual {
     public update(options: VisualUpdateOptions) {
         this.settings = Visual.parseSettings(options && options.dataViews && options.dataViews[0]);
         console.log('Visual update', options);
+
+        // The options.viewport object gives us the current visual's size, so we can assign this to
+        // our chart container to allow it to grow and shrink.
+            this.chartContainer
+                .attr('width', options.viewport.width)
+                .attr('height', options.viewport.height);
         
         // Map static data into our view model
             const viewModel = mapViewModel(this.settings);
