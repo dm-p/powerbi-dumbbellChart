@@ -86,7 +86,21 @@ export class Visual implements IVisual {
                 .attr('height', options.viewport.height);
         
         // Map static data into our view model
-            const viewModel = mapViewModel(this.settings);
+            const viewModel = mapViewModel(this.settings, options.viewport);
+
+        // Debugging axes - add lines
+            this.categoryAxisContainer.selectAll('*').remove();
+            this.categoryAxisContainer
+                .append('line')
+                    .attr('y1', viewModel.categoryAxis.range[0])
+                    .attr('y2', viewModel.categoryAxis.range[1])
+                    .attr('transform', `translate(${viewModel.categoryAxis.translate.x}, ${viewModel.categoryAxis.translate.y})`);
+            this.valueAxisContainer.selectAll('*').remove();
+            this.valueAxisContainer
+                .append('line')
+                    .attr('x1', viewModel.valueAxis.range[0])
+                    .attr('x2', viewModel.valueAxis.range[1])
+                    .attr('transform', `translate(${viewModel.valueAxis.translate.x}, ${viewModel.valueAxis.translate.y})`);
         
         // Inspect the view model in the browser console
             console.log(viewModel);
