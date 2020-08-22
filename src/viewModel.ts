@@ -3,6 +3,8 @@ import IViewport = powerbi.IViewport;
 
 import { VisualSettings } from './settings';
 
+import * as d3Scale from 'd3-scale';
+
 /**
  * Shared axis properties.
  */
@@ -17,14 +19,24 @@ import { VisualSettings } from './settings';
  * Properties specific to the value axis.
  */
     interface IValueAxis extends IAxis {
-
+        // Axis domain values
+            domain: [number, number];
+        // Scale to generate axis from domain and range
+            scale: d3Scale.ScaleLinear<number, number>;
+        // Tick count (number of ticks to apply)
+            tickCount: number;
+        // Tick size (length of each gridline)
+            tickSize: number;
     }
 
 /**
  * Properties specific to the category axis.
  */
     interface ICategoryAxis extends IAxis {
-
+        // Category domain values
+            domain: string[];
+        // Scale to generate axis from domain and range
+            scale: d3Scale.ScaleBand<string>;
     }
 
 /**
@@ -99,29 +111,58 @@ import { VisualSettings } from './settings';
                 bottom: 25,
                 left: 75
             };
-        
+
+        // Value axis domain (min/max)
+            const valueAxisDomain: [number, number] = [6, 20];
+
+        // Category axis domain (unique values)
+            const categoryAxisDomain = [
+                'Category A',
+                'Category B',
+                'Category C',
+                'Category D'
+            ];
+
+        // Derived range for the value axis, based on margin values
+            const valueAxisRange: [number, number] = [
+                margin.left,
+                viewport.width - margin.right
+            ];
+
+        // Derived range for the category axis, based on margin values
+            const categoryAxisRange: [number, number] = [
+                margin.top,
+                viewport.height - margin.bottom
+            ];
+
         // View model
             return {
                 margin: margin,
                 categoryAxis: {
-                    range:[
-                        margin.top,
-                        viewport.height - margin.bottom
-                    ],
+                    range: categoryAxisRange,
+                    domain: categoryAxisDomain,
+                    scale: d3Scale.scaleBand()
+                        .domain(categoryAxisDomain)
+                        .range(categoryAxisRange)
+                        .padding(0.2),
                     translate: {
                         x: margin.left,
                         y: 0
                     }
                 },
                 valueAxis: {
-                    range: [
-                        margin.left,
-                        viewport.width - margin.right
-                    ],
+                    range: valueAxisRange,
+                    domain: valueAxisDomain,
+                    scale: d3Scale.scaleLinear()
+                        .domain(valueAxisDomain)
+                        .range(valueAxisRange)
+                        .nice(),
                     translate: {
                         x: 0,
                         y: viewport.height - margin.bottom
-                    }
+                    },
+                    tickCount: 3,
+                    tickSize: - viewport.height - margin.top - margin.bottom
                 },
                 categories: [
                     {

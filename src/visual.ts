@@ -37,6 +37,7 @@ import DataView = powerbi.DataView;
 import VisualObjectInstanceEnumerationObject = powerbi.VisualObjectInstanceEnumerationObject;
 
 import * as d3Select from 'd3-selection';
+import * as d3Axis from 'd3-axis';
 
 import { VisualSettings } from './settings';
 import { mapViewModel } from './viewModel';
@@ -88,19 +89,18 @@ export class Visual implements IVisual {
         // Map static data into our view model
             const viewModel = mapViewModel(this.settings, options.viewport);
 
-        // Debugging axes - add lines
-            this.categoryAxisContainer.selectAll('*').remove();
+        // Call our axis functions in the appropriate containers
             this.categoryAxisContainer
-                .append('line')
-                    .attr('y1', viewModel.categoryAxis.range[0])
-                    .attr('y2', viewModel.categoryAxis.range[1])
-                    .attr('transform', `translate(${viewModel.categoryAxis.translate.x}, ${viewModel.categoryAxis.translate.y})`);
-            this.valueAxisContainer.selectAll('*').remove();
+                .attr('transform', `translate(${viewModel.categoryAxis.translate.x}, ${viewModel.categoryAxis.translate.y})`)
+                .call(d3Axis.axisLeft(viewModel.categoryAxis.scale));
+
             this.valueAxisContainer
-                .append('line')
-                    .attr('x1', viewModel.valueAxis.range[0])
-                    .attr('x2', viewModel.valueAxis.range[1])
-                    .attr('transform', `translate(${viewModel.valueAxis.translate.x}, ${viewModel.valueAxis.translate.y})`);
+                .attr('transform', `translate(${viewModel.valueAxis.translate.x}, ${viewModel.valueAxis.translate.y})`)
+                .call(
+                    d3Axis.axisBottom(viewModel.valueAxis.scale)
+                        .ticks(viewModel.valueAxis.tickCount)
+                        .tickSize(viewModel.valueAxis.tickSize)
+                );
         
         // Inspect the view model in the browser console
             console.log(viewModel);
