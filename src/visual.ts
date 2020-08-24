@@ -40,7 +40,7 @@ import * as d3Select from 'd3-selection';
 import * as d3Axis from 'd3-axis';
 
 import { VisualSettings } from './settings';
-import { mapViewModel } from './viewModel';
+import { mapViewModel, ICategory, IGroup } from './viewModel';
 
 export class Visual implements IVisual {
     // Visual's main (root) element
@@ -101,10 +101,113 @@ export class Visual implements IVisual {
                         .ticks(viewModel.valueAxis.tickCount)
                         .tickSize(viewModel.valueAxis.tickSize)
                 );
+
+        // Create an array of SVG group (g) elements and bind an `ICategory` to each; move it to the correct position on the axis
+            const categories = this.plotContainer
+                    .selectAll('.category')
+                        .data(viewModel.categories)
+                        .join(
+                            enter => {
+                                // Create grouping element
+                                    const group = enter.append('g')
+                                        .classed('category', true)
+                                        .call(this.transformCategoryGroup, viewModel.categoryAxis.scale);
+
+                                // Add line
+                                    group
+                                        .append('line')
+                                            .classed('dumbbellLine', true)
+                                            .call(this.transformDumbbellLine, viewModel.categoryAxis.scale, viewModel.valueAxis.scale);
+
+                                // Add circles for data points
+                                    group
+                                        .selectAll('.dumbbellPoint')
+                                        .data((d) => d.groups)
+                                        .join('circle')
+                                            .classed('dumbbellPoint', true)
+                                            .call(this.transformDumbbellCircle, viewModel.categoryAxis.scale, viewModel.valueAxis.scale);
+
+                                // Group element is used for any further operations
+                                    return group;
+                            },
+                            update => {
+                                // Re-position groups
+                                    update.call(this.transformCategoryGroup, viewModel.categoryAxis.scale);
+
+                                // Re-position line coordinates
+                                    update.select('.dumbbellLine')
+                                        .call(this.transformDumbbellLine, viewModel.categoryAxis.scale, viewModel.valueAxis.scale);
+
+                                // Re-position circle co-ordinates
+                                    update.selectAll('.dumbbellPoint')
+                                        .call(this.transformDumbbellCircle, viewModel.categoryAxis.scale, viewModel.valueAxis.scale);
+
+                                // Group element is used for any further operations
+                                    return update;
+                            },
+                            exit => {
+                                exit.remove();
+                            });
         
         // Inspect the view model in the browser console
             console.log(viewModel);
     }
+
+    /**
+     * Consolidates logic to handle positioning and attributes of category groups for enter and update
+     *
+     * @param selection     - D3 selection (group) to apply transformation to
+     * @param categoryScale - category scale object to use for positioning
+     */
+        private transformCategoryGroup(
+            selection: d3.Selection<SVGGElement, ICategory, any, any>,
+            categoryScale: d3.ScaleBand<string>
+        ) {
+            selection
+                .attr('transform', (d) => `translate(0, ${categoryScale(d.name)})`);
+        }
+
+    /**
+     * Consolidates logic to handle positioning anf attributes of the dumbbell line element within a category
+     *
+     * @param selection     - D3 selection (line) to apply transformation to
+     * @param categoryScale - category scale object to use for positioning
+     * @param valueScale    - value scale object to use for plotting by measure value
+     */
+        private transformDumbbellLine(
+            selection: d3.Selection<SVGLineElement, ICategory, any, any>,
+            categoryScale: d3.ScaleBand<string>,
+            valueScale: d3.ScaleLinear<number, number>
+        ) {
+            const midpoint = categoryScale.bandwidth() / 2;
+            selection
+                .attr('x1', (d) => valueScale(d.min))
+                .attr('x2', (d) => valueScale(d.max))
+                .attr('y1', midpoint)
+                .attr('y2', midpoint);
+        }
+
+    /**
+     * Consolidates logic to handle positioning anf attributes of the dumbbell circle elements within a category
+     *
+     * @param selection     - D3 selection (circle) to apply transformation to
+     * @param categoryScale - category scale object to use for positioning
+     * @param valueScale    - value scale object to use for plotting by measure value
+     */
+        private transformDumbbellCircle(
+            selection: d3.Selection<SVGCircleElement, IGroup, any, any>,
+            categoryScale: d3.ScaleBand<string>,
+            valueScale: d3.ScaleLinear<number, number>
+        ) {
+            const
+                radius = 5,
+                midpoint = categoryScale.bandwidth() / 2;
+            selection
+                .attr('cx', (d) => valueScale(d.value))
+                .attr('cy', midpoint)
+                .attr('r', radius)
+                .attr('fill', (d) => d.color);
+        }
 
     private static parseSettings(dataView: DataView): VisualSettings {
         return <VisualSettings>VisualSettings.parse(dataView);

@@ -64,19 +64,25 @@ import * as d3Scale from 'd3-scale';
 /**
  * Represents a data point within a visual category.
  */
-    interface IGroup {
+    export interface IGroup {
         // Name of group
             name: string;
         // Data point value
             value: number;
+        // Data point color
+            color: string;
     }
 
 /**
  * Represents a visual category data item.
  */
-    interface ICategory {
+    export interface ICategory {
         // Name of category
             name: string;
+        // Maximum group value
+            max: number;
+        // Minimum group value
+            min: number;
         // Category group items
             groups: IGroup[];
     }
@@ -168,30 +174,38 @@ import * as d3Scale from 'd3-scale';
                     {
                         name: 'Category A',
                         groups: [
-                            { name: 'Group One', value: 6 },
-                            { name: 'Group Two', value: 14 }
-                        ]
+                            { name: 'Group One', value: 6, color: '#118DFF' },
+                            { name: 'Group Two', value: 14, color: '#E66C37' }
+                        ],
+                        max: 14,
+                        min: 6
                     },
                     {
                         name: 'Category B',
                         groups: [
-                            { name: 'Group One', value: 6 },
-                            { name: 'Group Two', value: 14 }
-                        ]
+                            { name: 'Group One', value: 6, color: '#118DFF' },
+                            { name: 'Group Two', value: 14, color: '#E66C37' }
+                        ],
+                        max: 14,
+                        min: 6
                     },
                     {
                         name: 'Category C',
                         groups: [
-                            { name: 'Group One', value: 20 },
-                            { name: 'Group Two', value: 12 }
-                        ]
+                            { name: 'Group One', value: 20, color: '#118DFF' },
+                            { name: 'Group Two', value: 12, color: '#E66C37' }
+                        ],
+                        max: 20,
+                        min: 12
                     },
                     {
                         name: 'Category D',
                         groups: [
-                            { name: 'Group One', value: 18 },
-                            { name: 'Group Two', value: 7 }
-                        ]
+                            { name: 'Group One', value: 18, color: '#118DFF' },
+                            { name: 'Group Two', value: 7, color: '#E66C37' }
+                        ],
+                        max: 18,
+                        min: 7
                     }
                 ],
                 settings: settings
