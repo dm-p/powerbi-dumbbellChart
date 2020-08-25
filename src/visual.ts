@@ -127,6 +127,15 @@ export class Visual implements IVisual {
                                             .classed('dumbbellPoint', true)
                                             .call(this.transformDumbbellCircle, viewModel.categoryAxis.scale, viewModel.valueAxis.scale);
 
+                                // Add data labels for first category
+                                    group
+                                        .filter((d, di) => di === 0)
+                                        .selectAll('.dataLabel')
+                                        .data((d) => d.groups)
+                                        .join('text')
+                                            .classed('dataLabel', true)
+                                            .call(this.transformDataLabel, viewModel.valueAxis.scale);
+
                                 // Group element is used for any further operations
                                     return group;
                             },
@@ -141,6 +150,10 @@ export class Visual implements IVisual {
                                 // Re-position circle co-ordinates
                                     update.selectAll('.dumbbellPoint')
                                         .call(this.transformDumbbellCircle, viewModel.categoryAxis.scale, viewModel.valueAxis.scale);
+
+                                // Re-position data labels
+                                    update.selectAll('.dataLabel')
+                                        .call(this.transformDataLabel, viewModel.valueAxis.scale);
 
                                 // Group element is used for any further operations
                                     return update;
@@ -168,7 +181,7 @@ export class Visual implements IVisual {
         }
 
     /**
-     * Consolidates logic to handle positioning anf attributes of the dumbbell line element within a category
+     * Consolidates logic to handle positioning and attributes of the dumbbell line element within a category
      *
      * @param selection     - D3 selection (line) to apply transformation to
      * @param categoryScale - category scale object to use for positioning
@@ -188,7 +201,7 @@ export class Visual implements IVisual {
         }
 
     /**
-     * Consolidates logic to handle positioning anf attributes of the dumbbell circle elements within a category
+     * Consolidates logic to handle positioning and attributes of the dumbbell circle elements within a category
      *
      * @param selection     - D3 selection (circle) to apply transformation to
      * @param categoryScale - category scale object to use for positioning
@@ -207,6 +220,23 @@ export class Visual implements IVisual {
                 .attr('cy', midpoint)
                 .attr('r', radius)
                 .attr('fill', (d) => d.color);
+        }
+
+    /**
+     * Consolidates logic to handle positioning and attributes of the data label text elements within a category
+     *
+     * @param selection     - D3 selection (circle) to apply transformation to
+     * @param valueScale    - value scale object to use for plotting by measure value
+     */
+        private transformDataLabel(
+            selection: d3.Selection<SVGTextElement, IGroup, any, any>,
+            valueScale: d3.ScaleLinear<number, number>
+        ) {
+            selection
+                .attr('x', (d) => valueScale(d.value))
+                .attr('y', 0)
+                .attr('fill', (d) => d.color)
+                .text((d) => d.name);
         }
 
     private static parseSettings(dataView: DataView): VisualSettings {

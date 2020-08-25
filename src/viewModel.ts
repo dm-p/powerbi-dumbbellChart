@@ -141,6 +141,9 @@ import * as d3Scale from 'd3-scale';
                 viewport.height - margin.bottom
             ];
 
+        // Tick count for value axis
+            const valueAxisTickCount = 3;
+
         // View model
             return {
                 margin: margin,
@@ -162,12 +165,12 @@ import * as d3Scale from 'd3-scale';
                     scale: d3Scale.scaleLinear()
                         .domain(valueAxisDomain)
                         .range(valueAxisRange)
-                        .nice(),
+                        .nice(valueAxisTickCount),
                     translate: {
                         x: 0,
                         y: viewport.height - margin.bottom
                     },
-                    tickCount: 3,
+                    tickCount: valueAxisTickCount,
                     tickSize: - viewport.height - margin.top - margin.bottom
                 },
                 categories: [
