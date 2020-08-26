@@ -107,6 +107,7 @@ import * as d3Scale from 'd3-scale';
  * Create a view model of static data we can use to prototype our visual's look.
  *
  * @param settings  - parsed visual settings.
+ * @param viewport  - viewport (width/height) to constrain visual to
  */
     export function mapViewModel(settings: VisualSettings, viewport: IViewport): IViewModel {
 

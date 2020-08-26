@@ -24,25 +24,30 @@
  *  THE SOFTWARE.
  */
 
-"use strict";
+'use strict';
 
-import { dataViewObjectsParser } from "powerbi-visuals-utils-dataviewutils";
+import { dataViewObjectsParser } from 'powerbi-visuals-utils-dataviewutils';
 import DataViewObjectsParser = dataViewObjectsParser.DataViewObjectsParser;
 
 export class VisualSettings extends DataViewObjectsParser {
-      public dataPoint: dataPointSettings = new dataPointSettings();
-      }
+    dataPoints = new DataPointSettings();
+    connectingLines = new ConnectingLineSettings();
+    dataLabels = new DataLabelSettings();
+}
 
-    export class dataPointSettings {
-     // Default color
-      public defaultColor: string = "";
-     // Show all
-      public showAllDataPoints: boolean = true;
-     // Fill
-      public fill: string = "";
-     // Color saturation
-      public fillRule: string = "";
-     // Text Size
-      public fontSize: number = 12;
-     }
+export class DataPointSettings {
+    // The size of the radius, in pixels
+        radius: number = 5;
+}
 
+export class ConnectingLineSettings {
+    // The width of the line, in pixels
+        strokeWidth: number = 2;
+    // The color of the line
+        color: string = '#605E5C';
+}
+
+export class DataLabelSettings {
+    // Toggle the data label properties
+        show: boolean = true;
+}

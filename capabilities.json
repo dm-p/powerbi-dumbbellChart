@@ -12,11 +12,28 @@
         }
     ],
     "objects": {
-        "dataPoint": {
-            "displayName": "Data colors",
+        "dataPoints": {
+            "displayName": "Data Points",
             "properties": {
-                "defaultColor": {
-                    "displayName": "Default color",
+                "radius": {
+                    "displayName": "Radius",
+                    "type": {
+                        "numeric": true
+                    }
+                }
+            }
+        },
+        "connectingLines": {
+            "displayName": "Connecting Lines",
+            "properties": {
+                "strokeWidth": {
+                    "displayName": "Width",
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "color": {
+                    "displayName": "Color",
                     "type": {
                         "fill": {
                             "solid": {
@@ -24,35 +41,15 @@
                             }
                         }
                     }
-                },
-                "showAllDataPoints": {
-                    "displayName": "Show all",
+                }
+            }
+        },
+        "dataLabels": {
+            "displayName": "Data Labels",
+            "properties": {
+                "show": {
                     "type": {
                         "bool": true
-                    }
-                },
-                "fill": {
-                    "displayName": "Fill",
-                    "type": {
-                        "fill": {
-                            "solid": {
-                                "color": true
-                            }
-                        }
-                    }
-                },
-                "fillRule": {
-                    "displayName": "Color saturation",
-                    "type": {
-                        "fill": {}
-                    }
-                },
-                 "fontSize": {
-                    "displayName": "Text Size",
-                    "type": {
-                        "formatting": {
-                            "fontSize": true
-                        }
                     }
                 }
             }
