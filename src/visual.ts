@@ -39,7 +39,7 @@ import VisualObjectInstanceEnumerationObject = powerbi.VisualObjectInstanceEnume
 import * as d3Select from 'd3-selection';
 import * as d3Axis from 'd3-axis';
 
-import { VisualSettings } from './settings';
+import { VisualSettings, ConnectingLineSettings } from './settings';
 import { mapViewModel, ICategory, IGroup } from './viewModel';
 
 export class Visual implements IVisual {
@@ -117,7 +117,12 @@ export class Visual implements IVisual {
                                     group
                                         .append('line')
                                             .classed('dumbbellLine', true)
-                                            .call(this.transformDumbbellLine, viewModel.categoryAxis.scale, viewModel.valueAxis.scale);
+                                            .call(
+                                                this.transformDumbbellLine,
+                                                viewModel.categoryAxis.scale,
+                                                viewModel.valueAxis.scale,
+                                                this.settings.connectingLines
+                                            );
 
                                 // Add circles for data points
                                     group
@@ -125,7 +130,12 @@ export class Visual implements IVisual {
                                         .data((d) => d.groups)
                                         .join('circle')
                                             .classed('dumbbellPoint', true)
-                                            .call(this.transformDumbbellCircle, viewModel.categoryAxis.scale, viewModel.valueAxis.scale);
+                                            .call(
+                                                this.transformDumbbellCircle,
+                                                viewModel.categoryAxis.scale,
+                                                viewModel.valueAxis.scale,
+                                                this.settings.dataPoints.radius
+                                            );
 
                                 // Add data labels for first category
                                     group
@@ -134,7 +144,11 @@ export class Visual implements IVisual {
                                         .data((d) => d.groups)
                                         .join('text')
                                             .classed('dataLabel', true)
-                                            .call(this.transformDataLabel, viewModel.valueAxis.scale);
+                                            .call(
+                                                this.transformDataLabel,
+                                                viewModel.valueAxis.scale,
+                                                this.settings.dataLabels.show
+                                            );
 
                                 // Group element is used for any further operations
                                     return group;
@@ -145,15 +159,29 @@ export class Visual implements IVisual {
 
                                 // Re-position line coordinates
                                     update.select('.dumbbellLine')
-                                        .call(this.transformDumbbellLine, viewModel.categoryAxis.scale, viewModel.valueAxis.scale);
+                                        .call(
+                                            this.transformDumbbellLine,
+                                            viewModel.categoryAxis.scale,
+                                            viewModel.valueAxis.scale,
+                                            this.settings.connectingLines
+                                        );
 
                                 // Re-position circle co-ordinates
                                     update.selectAll('.dumbbellPoint')
-                                        .call(this.transformDumbbellCircle, viewModel.categoryAxis.scale, viewModel.valueAxis.scale);
+                                        .call(
+                                            this.transformDumbbellCircle,
+                                            viewModel.categoryAxis.scale,
+                                            viewModel.valueAxis.scale,
+                                            this.settings.dataPoints.radius
+                                        );
 
                                 // Re-position data labels
                                     update.selectAll('.dataLabel')
-                                        .call(this.transformDataLabel, viewModel.valueAxis.scale);
+                                        .call(
+                                            this.transformDataLabel,
+                                            viewModel.valueAxis.scale,
+                                            this.settings.dataLabels.show
+                                        );
 
                                 // Group element is used for any further operations
                                     return update;
@@ -186,18 +214,22 @@ export class Visual implements IVisual {
      * @param selection     - D3 selection (line) to apply transformation to
      * @param categoryScale - category scale object to use for positioning
      * @param valueScale    - value scale object to use for plotting by measure value
+     * @param settings      - parsed connecting line settings from dataView
      */
         private transformDumbbellLine(
             selection: d3.Selection<SVGLineElement, ICategory, any, any>,
             categoryScale: d3.ScaleBand<string>,
-            valueScale: d3.ScaleLinear<number, number>
+            valueScale: d3.ScaleLinear<number, number>,
+            settings: ConnectingLineSettings
         ) {
             const midpoint = categoryScale.bandwidth() / 2;
             selection
                 .attr('x1', (d) => valueScale(d.min))
                 .attr('x2', (d) => valueScale(d.max))
                 .attr('y1', midpoint)
-                .attr('y2', midpoint);
+                .attr('y2', midpoint)
+                .style('stroke-width', settings.strokeWidth)
+                .style('stroke', settings.color);
         }
 
     /**
@@ -206,14 +238,15 @@ export class Visual implements IVisual {
      * @param selection     - D3 selection (circle) to apply transformation to
      * @param categoryScale - category scale object to use for positioning
      * @param valueScale    - value scale object to use for plotting by measure value
+     * @param radius        - circle radius, in px
      */
         private transformDumbbellCircle(
             selection: d3.Selection<SVGCircleElement, IGroup, any, any>,
             categoryScale: d3.ScaleBand<string>,
-            valueScale: d3.ScaleLinear<number, number>
+            valueScale: d3.ScaleLinear<number, number>,
+            radius: number
         ) {
             const
-                radius = 5,
                 midpoint = categoryScale.bandwidth() / 2;
             selection
                 .attr('cx', (d) => valueScale(d.value))
@@ -227,16 +260,19 @@ export class Visual implements IVisual {
      *
      * @param selection     - D3 selection (circle) to apply transformation to
      * @param valueScale    - value scale object to use for plotting by measure value
+     * @param show          - whether to show labels or not
      */
         private transformDataLabel(
             selection: d3.Selection<SVGTextElement, IGroup, any, any>,
-            valueScale: d3.ScaleLinear<number, number>
+            valueScale: d3.ScaleLinear<number, number>,
+            show: boolean
         ) {
             selection
                 .attr('x', (d) => valueScale(d.value))
                 .attr('y', 0)
                 .attr('fill', (d) => d.color)
-                .text((d) => d.name);
+                .text((d) => d.name)
+                .style('visibility', show ? 'visible' : 'hidden');
         }
 
     private static parseSettings(dataView: DataView): VisualSettings {
