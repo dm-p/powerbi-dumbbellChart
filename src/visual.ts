@@ -40,7 +40,7 @@ import * as d3Select from 'd3-selection';
 import * as d3Axis from 'd3-axis';
 
 import { VisualSettings, ConnectingLineSettings } from './settings';
-import { mapViewModel, ICategory, IGroup } from './viewModel';
+import { validateViewModel, mapViewModel, ICategory, IGroup } from './viewModel';
 
 export class Visual implements IVisual {
     // Visual's main (root) element
@@ -77,121 +77,148 @@ export class Visual implements IVisual {
     }
 
     public update(options: VisualUpdateOptions) {
-        this.settings = Visual.parseSettings(options && options.dataViews && options.dataViews[0]);
         console.log('Visual update', options);
 
-        // The options.viewport object gives us the current visual's size, so we can assign this to
-        // our chart container to allow it to grow and shrink.
-            this.chartContainer
-                .attr('width', options.viewport.width)
-                .attr('height', options.viewport.height);
+        try {
         
-        // Map static data into our view model
-            const viewModel = mapViewModel(this.settings, options.viewport);
+            // Declare data view for re-use
+                const dataView = options && options.dataViews && options.dataViews[0];
 
-        // Call our axis functions in the appropriate containers
-            this.categoryAxisContainer
-                .attr('transform', `translate(${viewModel.categoryAxis.translate.x}, ${viewModel.categoryAxis.translate.y})`)
-                .call(d3Axis.axisLeft(viewModel.categoryAxis.scale));
+            // Parse data view into settings
+                this.settings = Visual.parseSettings(dataView);
 
-            this.valueAxisContainer
-                .attr('transform', `translate(${viewModel.valueAxis.translate.x}, ${viewModel.valueAxis.translate.y})`)
-                .call(
-                    d3Axis.axisBottom(viewModel.valueAxis.scale)
-                        .ticks(viewModel.valueAxis.tickCount)
-                        .tickSize(viewModel.valueAxis.tickSize)
-                );
+            // Check that our dataView is valid for our visual's requirements
+                const dataViewIsValid = validateViewModel(dataView);                
 
-        // Create an array of SVG group (g) elements and bind an `ICategory` to each; move it to the correct position on the axis
-            const categories = this.plotContainer
-                    .selectAll('.category')
-                        .data(viewModel.categories)
-                        .join(
-                            enter => {
-                                // Create grouping element
-                                    const group = enter.append('g')
-                                        .classed('category', true)
-                                        .call(this.transformCategoryGroup, viewModel.categoryAxis.scale);
+            // The options.viewport object gives us the current visual's size, so we can assign this to
+            // our chart container to allow it to grow and shrink.
+                this.chartContainer
+                    .attr('width', options.viewport.width)
+                    .attr('height', options.viewport.height);
 
-                                // Add line
-                                    group
-                                        .append('line')
-                                            .classed('dumbbellLine', true)
-                                            .call(
-                                                this.transformDumbbellLine,
-                                                viewModel.categoryAxis.scale,
-                                                viewModel.valueAxis.scale,
-                                                this.settings.connectingLines
-                                            );
+            // Ensure our visual responds appropriately for the user if the data view isn't valid
+                if (!dataViewIsValid) {
 
-                                // Add circles for data points
-                                    group
-                                        .selectAll('.dumbbellPoint')
-                                        .data((d) => d.groups)
-                                        .join('circle')
-                                            .classed('dumbbellPoint', true)
-                                            .call(
-                                                this.transformDumbbellCircle,
-                                                viewModel.categoryAxis.scale,
-                                                viewModel.valueAxis.scale,
-                                                this.settings.dataPoints.radius
-                                            );
+                    // Clear down any existing plotted SVG as it's no longer correct
+                        this.plotContainer.selectAll('*').remove();
+                        this.categoryAxisContainer.selectAll('*').remove();
+                        this.valueAxisContainer.selectAll('*').remove();
 
-                                // Add data labels for first category
-                                    group
-                                        .filter((d, di) => di === 0)
-                                        .selectAll('.dataLabel')
-                                        .data((d) => d.groups)
-                                        .join('text')
-                                            .classed('dataLabel', true)
-                                            .call(
-                                                this.transformDataLabel,
-                                                viewModel.valueAxis.scale,
-                                                this.settings.dataLabels.show
-                                            );
+                } else {
 
-                                // Group element is used for any further operations
-                                    return group;
-                            },
-                            update => {
-                                // Re-position groups
-                                    update.call(this.transformCategoryGroup, viewModel.categoryAxis.scale);
+                    // Map static data into our view model
+                        const viewModel = mapViewModel(this.settings, options.viewport);
 
-                                // Re-position line coordinates
-                                    update.select('.dumbbellLine')
-                                        .call(
-                                            this.transformDumbbellLine,
-                                            viewModel.categoryAxis.scale,
-                                            viewModel.valueAxis.scale,
-                                            this.settings.connectingLines
-                                        );
+                    // Call our axis functions in the appropriate containers
+                        this.categoryAxisContainer
+                            .attr('transform', `translate(${viewModel.categoryAxis.translate.x}, ${viewModel.categoryAxis.translate.y})`)
+                            .call(d3Axis.axisLeft(viewModel.categoryAxis.scale));
 
-                                // Re-position circle co-ordinates
-                                    update.selectAll('.dumbbellPoint')
-                                        .call(
-                                            this.transformDumbbellCircle,
-                                            viewModel.categoryAxis.scale,
-                                            viewModel.valueAxis.scale,
-                                            this.settings.dataPoints.radius
-                                        );
+                        this.valueAxisContainer
+                            .attr('transform', `translate(${viewModel.valueAxis.translate.x}, ${viewModel.valueAxis.translate.y})`)
+                            .call(
+                                d3Axis.axisBottom(viewModel.valueAxis.scale)
+                                    .ticks(viewModel.valueAxis.tickCount)
+                                    .tickSize(viewModel.valueAxis.tickSize)
+                            );
 
-                                // Re-position data labels
-                                    update.selectAll('.dataLabel')
-                                        .call(
-                                            this.transformDataLabel,
-                                            viewModel.valueAxis.scale,
-                                            this.settings.dataLabels.show
-                                        );
+                    // Create an array of SVG group (g) elements and bind an `ICategory` to each; move it to the correct position on the axis
+                        const categories = this.plotContainer
+                                .selectAll('.category')
+                                    .data(viewModel.categories)
+                                    .join(
+                                        enter => {
+                                            // Create grouping element
+                                                const group = enter.append('g')
+                                                    .classed('category', true)
+                                                    .call(this.transformCategoryGroup, viewModel.categoryAxis.scale);
 
-                                // Group element is used for any further operations
-                                    return update;
-                            },
-                            exit => {
-                                exit.remove();
-                            });
-        
-        // Inspect the view model in the browser console
-            console.log(viewModel);
+                                            // Add line
+                                                group
+                                                    .append('line')
+                                                        .classed('dumbbellLine', true)
+                                                        .call(
+                                                            this.transformDumbbellLine,
+                                                            viewModel.categoryAxis.scale,
+                                                            viewModel.valueAxis.scale,
+                                                            this.settings.connectingLines
+                                                        );
+
+                                            // Add circles for data points
+                                                group
+                                                    .selectAll('.dumbbellPoint')
+                                                    .data((d) => d.groups)
+                                                    .join('circle')
+                                                        .classed('dumbbellPoint', true)
+                                                        .call(
+                                                            this.transformDumbbellCircle,
+                                                            viewModel.categoryAxis.scale,
+                                                            viewModel.valueAxis.scale,
+                                                            this.settings.dataPoints.radius
+                                                        );
+
+                                            // Add data labels for first category
+                                                group
+                                                    .filter((d, di) => di === 0)
+                                                    .selectAll('.dataLabel')
+                                                    .data((d) => d.groups)
+                                                    .join('text')
+                                                        .classed('dataLabel', true)
+                                                        .call(
+                                                            this.transformDataLabel,
+                                                            viewModel.valueAxis.scale,
+                                                            this.settings.dataLabels.show
+                                                        );
+
+                                            // Group element is used for any further operations
+                                                return group;
+                                        },
+                                        update => {
+                                            // Re-position groups
+                                                update.call(this.transformCategoryGroup, viewModel.categoryAxis.scale);
+
+                                            // Re-position line coordinates
+                                                update.select('.dumbbellLine')
+                                                    .call(
+                                                        this.transformDumbbellLine,
+                                                        viewModel.categoryAxis.scale,
+                                                        viewModel.valueAxis.scale,
+                                                        this.settings.connectingLines
+                                                    );
+
+                                            // Re-position circle co-ordinates
+                                                update.selectAll('.dumbbellPoint')
+                                                    .call(
+                                                        this.transformDumbbellCircle,
+                                                        viewModel.categoryAxis.scale,
+                                                        viewModel.valueAxis.scale,
+                                                        this.settings.dataPoints.radius
+                                                    );
+
+                                            // Re-position data labels
+                                                update.selectAll('.dataLabel')
+                                                    .call(
+                                                        this.transformDataLabel,
+                                                        viewModel.valueAxis.scale,
+                                                        this.settings.dataLabels.show
+                                                    );
+
+                                            // Group element is used for any further operations
+                                                return update;
+                                        },
+                                        exit => {
+                                            exit.remove();
+                                        });
+                    
+                    // Inspect the view model in the browser console
+                        console.log(viewModel);
+
+                }
+
+        } catch(e) {
+            console.log('Error!', e);
+            debugger;
+        }
     }
 
     /**

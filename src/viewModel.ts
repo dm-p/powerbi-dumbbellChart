@@ -1,5 +1,6 @@
 import powerbi from 'powerbi-visuals-api';
 import IViewport = powerbi.IViewport;
+import DataView = powerbi.DataView;
 
 import { VisualSettings } from './settings';
 
@@ -101,6 +102,25 @@ import * as d3Scale from 'd3-scale';
             categoryAxis: ICategoryAxis;
         // Value axis information
             valueAxis: IValueAxis;
+    }
+
+/**
+ * Test the supplied data view to ensure that it's valid for our visual's view model logic.
+ *
+ * @param dataView  - dataView from update options
+ */
+    export function validateViewModel(dataView: DataView): boolean {
+        if (
+            dataView &&
+            dataView.categorical &&
+            dataView.categorical.categories &&
+            dataView.categorical.categories.length === 1 &&
+            dataView.categorical.values &&
+            dataView.categorical.values.length > 0
+        ) {
+            return true;
+        }
+        return false;
     }
 
 /**
