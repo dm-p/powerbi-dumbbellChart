@@ -13,7 +13,15 @@
         {
             "displayName": "Measure",
             "name": "measure",
-            "kind": "Measure"
+            "kind": "Measure",
+            "requiredTypes": [
+                {
+                    "numeric": true
+                },
+                {
+                    "integer": true
+                }
+            ]
         }
     ],
     "objects": {

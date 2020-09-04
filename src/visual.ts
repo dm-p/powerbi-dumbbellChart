@@ -35,12 +35,13 @@ import EnumerateVisualObjectInstancesOptions = powerbi.EnumerateVisualObjectInst
 import VisualObjectInstance = powerbi.VisualObjectInstance;
 import DataView = powerbi.DataView;
 import VisualObjectInstanceEnumerationObject = powerbi.VisualObjectInstanceEnumerationObject;
+import IVisualHost = powerbi.extensibility.visual.IVisualHost;
 
 import * as d3Select from 'd3-selection';
 import * as d3Axis from 'd3-axis';
 
 import { VisualSettings, ConnectingLineSettings } from './settings';
-import { validateViewModel, mapViewModel, ICategory, IGroup } from './viewModel';
+import { isDataViewValid, mapViewModel, ICategory, IGroup } from './viewModel';
 
 export class Visual implements IVisual {
     // Visual's main (root) element
@@ -55,10 +56,14 @@ export class Visual implements IVisual {
         private plotContainer: d3.Selection<SVGElement, any, any, any>;
     // Parsed visual settings
         private settings: VisualSettings;
+    // Developer visual host services
+        private host: IVisualHost;
 
     constructor(options: VisualConstructorOptions) {
         console.log('Visual constructor', options);
         this.target = options.element;
+        this.host = options.host;
+
         // Create our fixed elements, as these only need to be done once
             this.chartContainer = d3Select.select(this.target)
                 .append('svg')
@@ -88,7 +93,7 @@ export class Visual implements IVisual {
                 this.settings = Visual.parseSettings(dataView);
 
             // Check that our dataView is valid for our visual's requirements
-                const dataViewIsValid = validateViewModel(dataView);                
+                const dataViewIsValid = isDataViewValid(dataView);                
 
             // The options.viewport object gives us the current visual's size, so we can assign this to
             // our chart container to allow it to grow and shrink.
@@ -107,7 +112,7 @@ export class Visual implements IVisual {
                 } else {
 
                     // Map static data into our view model
-                        const viewModel = mapViewModel(this.settings, options.viewport);
+                        const viewModel = mapViewModel(dataView, this.settings, options.viewport, this.host);
 
                     // Call our axis functions in the appropriate containers
                         this.categoryAxisContainer
@@ -178,7 +183,8 @@ export class Visual implements IVisual {
                                                 update.call(this.transformCategoryGroup, viewModel.categoryAxis.scale);
 
                                             // Re-position line coordinates
-                                                update.select('.dumbbellLine')
+                                                update
+                                                    .select('.dumbbellLine')
                                                     .call(
                                                         this.transformDumbbellLine,
                                                         viewModel.categoryAxis.scale,
@@ -186,22 +192,31 @@ export class Visual implements IVisual {
                                                         this.settings.connectingLines
                                                     );
 
-                                            // Re-position circle co-ordinates
-                                                update.selectAll('.dumbbellPoint')
-                                                    .call(
-                                                        this.transformDumbbellCircle,
-                                                        viewModel.categoryAxis.scale,
-                                                        viewModel.valueAxis.scale,
-                                                        this.settings.dataPoints.radius
-                                                    );
+                                            // Re-position circle coordinates
+                                                update
+                                                    .selectAll('.dumbbellPoint')
+                                                    .data((d) => d.groups)
+                                                    .join('circle')
+                                                        .classed('dumbbellPoint', true)
+                                                        .call(
+                                                            this.transformDumbbellCircle,
+                                                            viewModel.categoryAxis.scale,
+                                                            viewModel.valueAxis.scale,
+                                                            this.settings.dataPoints.radius
+                                                        );
 
                                             // Re-position data labels
-                                                update.selectAll('.dataLabel')
-                                                    .call(
-                                                        this.transformDataLabel,
-                                                        viewModel.valueAxis.scale,
-                                                        this.settings.dataLabels.show
-                                                    );
+                                                update
+                                                    .filter((d, di) => di === 0)
+                                                    .selectAll('.dataLabel')
+                                                    .data((d) => d.groups)
+                                                    .join('text')
+                                                        .classed('dataLabel', true)
+                                                        .call(
+                                                            this.transformDataLabel,
+                                                            viewModel.valueAxis.scale,
+                                                            this.settings.dataLabels.show
+                                                        );
 
                                             // Group element is used for any further operations
                                                 return update;
