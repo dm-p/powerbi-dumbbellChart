@@ -81,7 +81,7 @@ import { IViewModel, ICategory, IGroup } from './viewModel';
                                         .ticks(viewModel.valueAxis.tickCount)
                                         .tickSize(viewModel.valueAxis.tickSize)
                                 );
-                        // Update data bindgins on elements
+                        // Update data bindings on elements
                             this.rebindCategories(viewModel);
                     }
             }
