@@ -36,12 +36,13 @@ import VisualObjectInstance = powerbi.VisualObjectInstance;
 import DataView = powerbi.DataView;
 import VisualObjectInstanceEnumerationObject = powerbi.VisualObjectInstanceEnumerationObject;
 import IVisualHost = powerbi.extensibility.visual.IVisualHost;
+import VisualUpdateType = powerbi.VisualUpdateType;
 
 import * as d3Select from 'd3-selection';
 import * as d3Axis from 'd3-axis';
 
 import { VisualSettings, ConnectingLineSettings } from './settings';
-import { isDataViewValid, mapViewModel, ICategory, IGroup } from './viewModel';
+import { ViewModelManager, ICategory, IGroup } from './viewModel';
 
 export class Visual implements IVisual {
     // Visual's main (root) element
@@ -58,11 +59,14 @@ export class Visual implements IVisual {
         private settings: VisualSettings;
     // Developer visual host services
         private host: IVisualHost;
+    // ViewModel manager for visual
+        private viewModelManager: ViewModelManager;
 
     constructor(options: VisualConstructorOptions) {
         console.log('Visual constructor', options);
         this.target = options.element;
         this.host = options.host;
+        this.viewModelManager = new ViewModelManager(this.host);
 
         // Create our fixed elements, as these only need to be done once
             this.chartContainer = d3Select.select(this.target)
@@ -85,15 +89,26 @@ export class Visual implements IVisual {
         console.log('Visual update', options);
 
         try {
-        
+
             // Declare data view for re-use
                 const dataView = options && options.dataViews && options.dataViews[0];
 
             // Parse data view into settings
                 this.settings = Visual.parseSettings(dataView);
 
-            // Check that our dataView is valid for our visual's requirements
-                const dataViewIsValid = isDataViewValid(dataView);                
+            // We don't need to (re) map the view model unless the visual's data changes. The visual update options tell us the type
+            // of update that's going on and we can decide if we need to do it or not.
+                switch (options.type) {
+                    case VisualUpdateType.All:
+                    case VisualUpdateType.Data: {
+                        console.log('dataView has changed! Mapping ViewModel...');
+                        this.viewModelManager.mapDataView(dataView, this.settings);
+                        break;
+                    }
+                }
+
+            // More convenient access to viewModel
+                const viewModel = this.viewModelManager.viewModel;
 
             // The options.viewport object gives us the current visual's size, so we can assign this to
             // our chart container to allow it to grow and shrink.
@@ -102,7 +117,7 @@ export class Visual implements IVisual {
                     .attr('height', options.viewport.height);
 
             // Ensure our visual responds appropriately for the user if the data view isn't valid
-                if (!dataViewIsValid) {
+                if (!viewModel.isValid) {
 
                     // Clear down any existing plotted SVG as it's no longer correct
                         this.plotContainer.selectAll('*').remove();
@@ -111,8 +126,8 @@ export class Visual implements IVisual {
 
                 } else {
 
-                    // Map static data into our view model
-                        const viewModel = mapViewModel(dataView, this.settings, options.viewport, this.host);
+                    // Ensure we've updated our viewmodel's axes based on any new viewport info
+                        this.viewModelManager.updateAxes(options.viewport);
 
                     // Call our axis functions in the appropriate containers
                         this.categoryAxisContainer
