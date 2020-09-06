@@ -38,64 +38,37 @@ import VisualObjectInstanceEnumerationObject = powerbi.VisualObjectInstanceEnume
 import IVisualHost = powerbi.extensibility.visual.IVisualHost;
 import VisualUpdateType = powerbi.VisualUpdateType;
 
-import * as d3Select from 'd3-selection';
-import * as d3Axis from 'd3-axis';
-
-import { VisualSettings, ConnectingLineSettings } from './settings';
-import { ViewModelManager, ICategory, IGroup } from './viewModel';
+import { VisualSettings } from './settings';
+import { ViewModelManager } from './viewModel';
+import { DomManager } from './dom';
 
 export class Visual implements IVisual {
     // Visual's main (root) element
         private target: HTMLElement;
-    // SVG element for the entire chart; will be a child of the main visual element
-        private chartContainer: d3.Selection<SVGElement, any, any, any>;
-    // SVG group element to consolidate the category axis elements
-        private categoryAxisContainer: d3.Selection<SVGElement, any, any, any>;
-    // SVG group element to consolidate the value axis elements
-        private valueAxisContainer: d3.Selection<SVGElement, any, any, any>;
-    // SVG group element to consolidate the visual data elements
-        private plotContainer: d3.Selection<SVGElement, any, any, any>;
     // Parsed visual settings
         private settings: VisualSettings;
     // Developer visual host services
         private host: IVisualHost;
     // ViewModel manager for visual
         private viewModelManager: ViewModelManager;
+    // Main DOM manager
+        private domManager: DomManager;
 
     constructor(options: VisualConstructorOptions) {
         console.log('Visual constructor', options);
         this.target = options.element;
         this.host = options.host;
         this.viewModelManager = new ViewModelManager(this.host);
-
-        // Create our fixed elements, as these only need to be done once
-            this.chartContainer = d3Select.select(this.target)
-                .append('svg')
-                    .attr('id', 'dumbbellChartContainer');
-            this.categoryAxisContainer = this.chartContainer
-                .append('g')
-                    .classed('categoryAxis', true)
-                    .classed('axis', true);
-            this.valueAxisContainer = this.chartContainer
-                .append('g')
-                    .classed('valueAxis', true)
-                    .classed('axis', true);
-            this.plotContainer = this.chartContainer
-                .append('g')
-                    .classed('plotArea', true);
+        this.domManager = new DomManager(this.target);
     }
 
     public update(options: VisualUpdateOptions) {
         console.log('Visual update', options);
-
         try {
-
             // Declare data view for re-use
                 const dataView = options && options.dataViews && options.dataViews[0];
-
             // Parse data view into settings
                 this.settings = Visual.parseSettings(dataView);
-
             // We don't need to (re) map the view model unless the visual's data changes. The visual update options tell us the type
             // of update that's going on and we can decide if we need to do it or not.
                 switch (options.type) {
@@ -106,231 +79,31 @@ export class Visual implements IVisual {
                         break;
                     }
                 }
-
             // More convenient access to viewModel
                 const viewModel = this.viewModelManager.viewModel;
-
+            // More conventient access to DOM Manager's Chart Manager instance
+                const chartManager = this.domManager.chartManager;
             // The options.viewport object gives us the current visual's size, so we can assign this to
             // our chart container to allow it to grow and shrink.
-                this.chartContainer
-                    .attr('width', options.viewport.width)
-                    .attr('height', options.viewport.height);
-
+                chartManager.updateViewport(options.viewport);
             // Ensure our visual responds appropriately for the user if the data view isn't valid
                 if (!viewModel.isValid) {
-
-                    // Clear down any existing plotted SVG as it's no longer correct
-                        this.plotContainer.selectAll('*').remove();
-                        this.categoryAxisContainer.selectAll('*').remove();
-                        this.valueAxisContainer.selectAll('*').remove();
-
+                    chartManager.clear();
                 } else {
-
                     // Ensure we've updated our viewmodel's axes based on any new viewport info
                         this.viewModelManager.updateAxes(options.viewport);
-
-                    // Call our axis functions in the appropriate containers
-                        this.categoryAxisContainer
-                            .attr('transform', `translate(${viewModel.categoryAxis.translate.x}, ${viewModel.categoryAxis.translate.y})`)
-                            .call(d3Axis.axisLeft(viewModel.categoryAxis.scale));
-
-                        this.valueAxisContainer
-                            .attr('transform', `translate(${viewModel.valueAxis.translate.x}, ${viewModel.valueAxis.translate.y})`)
-                            .call(
-                                d3Axis.axisBottom(viewModel.valueAxis.scale)
-                                    .ticks(viewModel.valueAxis.tickCount)
-                                    .tickSize(viewModel.valueAxis.tickSize)
-                            );
-
-                    // Create an array of SVG group (g) elements and bind an `ICategory` to each; move it to the correct position on the axis
-                        const categories = this.plotContainer
-                                .selectAll('.category')
-                                    .data(viewModel.categories)
-                                    .join(
-                                        enter => {
-                                            // Create grouping element
-                                                const group = enter.append('g')
-                                                    .classed('category', true)
-                                                    .call(this.transformCategoryGroup, viewModel.categoryAxis.scale);
-
-                                            // Add line
-                                                group
-                                                    .append('line')
-                                                        .classed('dumbbellLine', true)
-                                                        .call(
-                                                            this.transformDumbbellLine,
-                                                            viewModel.categoryAxis.scale,
-                                                            viewModel.valueAxis.scale,
-                                                            this.settings.connectingLines
-                                                        );
-
-                                            // Add circles for data points
-                                                group
-                                                    .selectAll('.dumbbellPoint')
-                                                    .data((d) => d.groups)
-                                                    .join('circle')
-                                                        .classed('dumbbellPoint', true)
-                                                        .call(
-                                                            this.transformDumbbellCircle,
-                                                            viewModel.categoryAxis.scale,
-                                                            viewModel.valueAxis.scale,
-                                                            this.settings.dataPoints.radius
-                                                        );
-
-                                            // Add data labels for first category
-                                                group
-                                                    .filter((d, di) => di === 0)
-                                                    .selectAll('.dataLabel')
-                                                    .data((d) => d.groups)
-                                                    .join('text')
-                                                        .classed('dataLabel', true)
-                                                        .call(
-                                                            this.transformDataLabel,
-                                                            viewModel.valueAxis.scale,
-                                                            this.settings.dataLabels.show
-                                                        );
-
-                                            // Group element is used for any further operations
-                                                return group;
-                                        },
-                                        update => {
-                                            // Re-position groups
-                                                update.call(this.transformCategoryGroup, viewModel.categoryAxis.scale);
-
-                                            // Re-position line coordinates
-                                                update
-                                                    .select('.dumbbellLine')
-                                                    .call(
-                                                        this.transformDumbbellLine,
-                                                        viewModel.categoryAxis.scale,
-                                                        viewModel.valueAxis.scale,
-                                                        this.settings.connectingLines
-                                                    );
-
-                                            // Re-position circle coordinates
-                                                update
-                                                    .selectAll('.dumbbellPoint')
-                                                    .data((d) => d.groups)
-                                                    .join('circle')
-                                                        .classed('dumbbellPoint', true)
-                                                        .call(
-                                                            this.transformDumbbellCircle,
-                                                            viewModel.categoryAxis.scale,
-                                                            viewModel.valueAxis.scale,
-                                                            this.settings.dataPoints.radius
-                                                        );
-
-                                            // Re-position data labels
-                                                update
-                                                    .filter((d, di) => di === 0)
-                                                    .selectAll('.dataLabel')
-                                                    .data((d) => d.groups)
-                                                    .join('text')
-                                                        .classed('dataLabel', true)
-                                                        .call(
-                                                            this.transformDataLabel,
-                                                            viewModel.valueAxis.scale,
-                                                            this.settings.dataLabels.show
-                                                        );
-
-                                            // Group element is used for any further operations
-                                                return update;
-                                        },
-                                        exit => {
-                                            exit.remove();
-                                        });
-                    
-                    // Inspect the view model in the browser console
-                        console.log(viewModel);
-
+                    // Re-draw the chart
+                        chartManager.plot(viewModel);
                 }
-
         } catch(e) {
-            console.log('Error!', e);
-            debugger;
+            // (For now) log error details and pause execution for debugging
+                console.log('Error!', e);
+                debugger;
+        } finally {
+            // Inspect the view model in the browser console
+                console.log(this.viewModelManager.viewModel);
         }
     }
-
-    /**
-     * Consolidates logic to handle positioning and attributes of category groups for enter and update
-     *
-     * @param selection     - D3 selection (group) to apply transformation to
-     * @param categoryScale - category scale object to use for positioning
-     */
-        private transformCategoryGroup(
-            selection: d3.Selection<SVGGElement, ICategory, any, any>,
-            categoryScale: d3.ScaleBand<string>
-        ) {
-            selection
-                .attr('transform', (d) => `translate(0, ${categoryScale(d.name)})`);
-        }
-
-    /**
-     * Consolidates logic to handle positioning and attributes of the dumbbell line element within a category
-     *
-     * @param selection     - D3 selection (line) to apply transformation to
-     * @param categoryScale - category scale object to use for positioning
-     * @param valueScale    - value scale object to use for plotting by measure value
-     * @param settings      - parsed connecting line settings from dataView
-     */
-        private transformDumbbellLine(
-            selection: d3.Selection<SVGLineElement, ICategory, any, any>,
-            categoryScale: d3.ScaleBand<string>,
-            valueScale: d3.ScaleLinear<number, number>,
-            settings: ConnectingLineSettings
-        ) {
-            const midpoint = categoryScale.bandwidth() / 2;
-            selection
-                .attr('x1', (d) => valueScale(d.min))
-                .attr('x2', (d) => valueScale(d.max))
-                .attr('y1', midpoint)
-                .attr('y2', midpoint)
-                .style('stroke-width', settings.strokeWidth)
-                .style('stroke', settings.color);
-        }
-
-    /**
-     * Consolidates logic to handle positioning and attributes of the dumbbell circle elements within a category
-     *
-     * @param selection     - D3 selection (circle) to apply transformation to
-     * @param categoryScale - category scale object to use for positioning
-     * @param valueScale    - value scale object to use for plotting by measure value
-     * @param radius        - circle radius, in px
-     */
-        private transformDumbbellCircle(
-            selection: d3.Selection<SVGCircleElement, IGroup, any, any>,
-            categoryScale: d3.ScaleBand<string>,
-            valueScale: d3.ScaleLinear<number, number>,
-            radius: number
-        ) {
-            const
-                midpoint = categoryScale.bandwidth() / 2;
-            selection
-                .attr('cx', (d) => valueScale(d.value))
-                .attr('cy', midpoint)
-                .attr('r', radius)
-                .attr('fill', (d) => d.color);
-        }
-
-    /**
-     * Consolidates logic to handle positioning and attributes of the data label text elements within a category
-     *
-     * @param selection     - D3 selection (circle) to apply transformation to
-     * @param valueScale    - value scale object to use for plotting by measure value
-     * @param show          - whether to show labels or not
-     */
-        private transformDataLabel(
-            selection: d3.Selection<SVGTextElement, IGroup, any, any>,
-            valueScale: d3.ScaleLinear<number, number>,
-            show: boolean
-        ) {
-            selection
-                .attr('x', (d) => valueScale(d.value))
-                .attr('y', 0)
-                .attr('fill', (d) => d.color)
-                .text((d) => d.name)
-                .style('visibility', show ? 'visible' : 'hidden');
-        }
 
     private static parseSettings(dataView: DataView): VisualSettings {
         return <VisualSettings>VisualSettings.parse(dataView);
