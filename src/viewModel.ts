@@ -2,6 +2,7 @@ import powerbi from 'powerbi-visuals-api';
 import IViewport = powerbi.IViewport;
 import DataView = powerbi.DataView;
 import IVisualHost = powerbi.extensibility.visual.IVisualHost;
+import ISelectionId = powerbi.visuals.ISelectionId;
 
 import { VisualSettings } from './settings';
 
@@ -69,6 +70,10 @@ import * as d3Scale from 'd3-scale';
     export interface IGroup {
         // Name of group
             name: string;
+        // Group selection ID (for unique values of series)
+            groupSelectionId: ISelectionId;
+        // Data point selection ID (instersection of category/series/measure)
+            dataPointSelectionId: ISelectionId;
         // Data point value
             value: number;
         // Data point color
@@ -85,6 +90,8 @@ import * as d3Scale from 'd3-scale';
             max: number;
         // Minimum group value
             min: number;
+        // Category selection ID
+            selectionId: ISelectionId;
         // Category group items
             groups: IGroup[];
     }
@@ -160,12 +167,26 @@ import * as d3Scale from 'd3-scale';
                             // using variables in this part of the mapping process and will reset when we hit the next category.
                                 let categoryMinValue: number,
                                     categoryMaxValue: number;
+                            // Build our Selection ID for this category
+                                const categorySelectionId = this.host.createSelectionIdBuilder()
+                                        .withCategory(categoryColumn, ci)
+                                        .createSelectionId();
                             // The number of entries in the categorical.values array denotes how many groups we have in each
                             // category, so we can iterate over these too and use the category index from the outer foreach
                             // to access the correct measure value from each group's values array.
                                 const groups: IGroup[] = valueGroupings.map((g, gi) => {
                                     // Get group name
                                         const groupName = <string>g.source.groupName;
+                                    // Series-level selection ID
+                                        const groupSelectionId = this.host.createSelectionIdBuilder()
+                                                .withSeries(valueGroupings, g)
+                                                .createSelectionId();
+                                    // Data point-level selection ID
+                                        const dataPointSelectionId = this.host.createSelectionIdBuilder()
+                                                .withCategory(categoryColumn, ci)
+                                                .withSeries(valueGroupings, g)
+                                                .withMeasure(g.source.queryName)
+                                                .createSelectionId();
                                     // Get current value. Similar to category, it needs to be type-cast. As we have restricted
                                     // valid data types in our data roles, we know it's safe to cast it to a number.
                                         const groupValue = <number>g.values[ci];
@@ -177,6 +198,8 @@ import * as d3Scale from 'd3-scale';
                                     // Return a valid IGroup for this iteration.
                                         return {
                                             name: groupName,
+                                            groupSelectionId: groupSelectionId,
+                                            dataPointSelectionId: dataPointSelectionId,
                                             value: groupValue,
                                             color: color
                                         }
@@ -189,7 +212,8 @@ import * as d3Scale from 'd3-scale';
                                 name: categoryName,
                                 groups: groups,
                                 min: categoryMinValue,
-                                max: categoryMaxValue
+                                max: categoryMaxValue,
+                                selectionId: categorySelectionId
                             });
                     });
                 // Update the dataset min and max values
