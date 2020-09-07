@@ -115,6 +115,35 @@ export class Visual implements IVisual {
      *
      */
     public enumerateObjectInstances(options: EnumerateVisualObjectInstancesOptions): VisualObjectInstance[] | VisualObjectInstanceEnumerationObject {
-        return VisualSettings.enumerateObjectInstances(this.settings || VisualSettings.getDefault(), options);
+        let objects = <VisualObjectInstanceEnumerationObject>
+                VisualSettings.enumerateObjectInstances(
+                    this.settings || VisualSettings.getDefault(),
+                    options
+                );
+        // Show which object this call is processing
+            console.log(`Object: ${options.objectName}`);
+        // Based on which object we're working with, handle the instances accordingly
+            switch (options.objectName) {
+                case 'dataPoints': {
+                    // Create a new instance for each group/series and add data-bound properties
+                        this.viewModelManager.viewModel.categories[0].groups.forEach((g) => {
+                            objects.instances.push({
+                                objectName: options.objectName,
+                                displayName: g.name,
+                                properties: {
+                                    fillColor: {
+                                        solid: {
+                                            color: g.color
+                                        }
+                                    }
+                                },
+                                selector: g.groupSelectionId.getSelector()
+                            });
+                        });
+                }
+            }
+        // Show our instances
+            console.log(objects.instances);
+        return objects;
     }
 }
