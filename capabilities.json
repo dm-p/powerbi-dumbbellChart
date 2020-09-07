@@ -33,6 +33,16 @@
                     "type": {
                         "numeric": true
                     }
+                },
+                "fillColor": {
+                    "displayName": "Fill Color",
+                    "type": {
+                        "fill": {
+                            "solid": {
+                                "color": true
+                            }
+                        }
+                    }
                 }
             }
         },

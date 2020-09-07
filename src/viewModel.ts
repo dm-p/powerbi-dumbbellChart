@@ -3,6 +3,8 @@ import IViewport = powerbi.IViewport;
 import DataView = powerbi.DataView;
 import IVisualHost = powerbi.extensibility.visual.IVisualHost;
 import ISelectionId = powerbi.visuals.ISelectionId;
+import { dataViewObject } from 'powerbi-visuals-utils-dataviewutils';
+import getFillColorByPropertyName = dataViewObject.getFillColorByPropertyName;
 
 import { VisualSettings } from './settings';
 
@@ -72,7 +74,7 @@ import * as d3Scale from 'd3-scale';
             name: string;
         // Group selection ID (for unique values of series)
             groupSelectionId: ISelectionId;
-        // Data point selection ID (instersection of category/series/measure)
+        // Data point selection ID (intersection of category/series/measure)
             dataPointSelectionId: ISelectionId;
         // Data point value
             value: number;
@@ -174,9 +176,11 @@ import * as d3Scale from 'd3-scale';
                             // The number of entries in the categorical.values array denotes how many groups we have in each
                             // category, so we can iterate over these too and use the category index from the outer foreach
                             // to access the correct measure value from each group's values array.
-                                const groups: IGroup[] = valueGroupings.map((g, gi) => {
+                                const groups: IGroup[] = valueGroupings.grouped().map((g, gi) => {
+                                    // Get our measure column (which is the first values array element)
+                                        const measure = g.values.find((m) => m.source.roles.measure);
                                     // Get group name
-                                        const groupName = <string>g.source.groupName;
+                                        const groupName = <string>g.name;
                                     // Series-level selection ID
                                         const groupSelectionId = this.host.createSelectionIdBuilder()
                                                 .withSeries(valueGroupings, g)
@@ -185,16 +189,23 @@ import * as d3Scale from 'd3-scale';
                                         const dataPointSelectionId = this.host.createSelectionIdBuilder()
                                                 .withCategory(categoryColumn, ci)
                                                 .withSeries(valueGroupings, g)
-                                                .withMeasure(g.source.queryName)
+                                                .withMeasure(measure.source.queryName)
                                                 .createSelectionId();
                                     // Get current value. Similar to category, it needs to be type-cast. As we have restricted
                                     // valid data types in our data roles, we know it's safe to cast it to a number.
-                                        const groupValue = <number>g.values[ci];
+                                        const groupValue = <number>measure.values[ci];
                                     // Set group min/max to measure value if it's at the extremes
                                         categoryMinValue = Math.min(categoryMinValue || groupValue, groupValue);
                                         categoryMaxValue = Math.max(categoryMaxValue || groupValue, groupValue);
-                                    // Resolve colour from theme for this group name
-                                        const color = this.host.colorPalette.getColor(groupName).value;
+                                    // Handle colour selection. Look in the grouped objects, or using the host services to access 
+                                    // the report's color palette and assign a color by name. This will use the next available color
+                                    // if not already used, which means that when a group name is re-encountered on subsequent
+                                    // categories, Power BI will assign the already reserved color code.
+                                        const color = getFillColorByPropertyName(
+                                            g.objects?.dataPoints,
+                                            'fillColor',
+                                            this.host.colorPalette.getColor(groupName).value
+                                        );
                                     // Return a valid IGroup for this iteration.
                                         return {
                                             name: groupName,
