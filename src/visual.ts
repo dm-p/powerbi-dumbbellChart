@@ -38,9 +38,14 @@ import VisualObjectInstanceEnumerationObject = powerbi.VisualObjectInstanceEnume
 import IVisualHost = powerbi.extensibility.visual.IVisualHost;
 import VisualUpdateType = powerbi.VisualUpdateType;
 
+import { interactivitySelectionService, interactivityBaseService } from 'powerbi-visuals-utils-interactivityutils';
+import IInteractivityService = interactivityBaseService.IInteractivityService;
+import SelectableDataPoint = interactivitySelectionService.SelectableDataPoint;
+
 import { VisualSettings } from './settings';
 import { ViewModelManager } from './viewModel';
 import { DomManager } from './dom';
+import { BehaviorManager, IDumbbellBehaviorOptions } from './behavior';
 
 export class Visual implements IVisual {
     // Visual's main (root) element
@@ -53,6 +58,10 @@ export class Visual implements IVisual {
         private viewModelManager: ViewModelManager;
     // Main DOM manager
         private domManager: DomManager;
+    // Interactivity for data points
+        private interactivity: IInteractivityService<SelectableDataPoint>;
+    // Behavior of data points
+        private behavior: BehaviorManager<SelectableDataPoint>;
 
     constructor(options: VisualConstructorOptions) {
         console.log('Visual constructor', options);
@@ -60,6 +69,8 @@ export class Visual implements IVisual {
         this.host = options.host;
         this.viewModelManager = new ViewModelManager(this.host);
         this.domManager = new DomManager(this.target);
+        this.interactivity = interactivitySelectionService.createInteractivitySelectionService(this.host);
+        this.behavior = new BehaviorManager();
     }
 
     public update(options: VisualUpdateOptions) {
@@ -94,6 +105,12 @@ export class Visual implements IVisual {
                         this.viewModelManager.updateAxes(options.viewport);
                     // Re-draw the chart
                         chartManager.plot(viewModel);
+                    // Update interactivity/behavior
+                        this.interactivity.bind(<IDumbbellBehaviorOptions<SelectableDataPoint>>{
+                            behavior: this.behavior,
+                            dataPoints: this.viewModelManager.getSelectableDataPoints(),
+                            categorySelection: chartManager.categories
+                        });
                 }
         } catch(e) {
             // (For now) log error details and pause execution for debugging

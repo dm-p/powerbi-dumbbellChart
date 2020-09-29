@@ -18,7 +18,7 @@ import { IViewModel, ICategory, IGroup } from './viewModel';
         // SVG group element to consolidate the visual data elements
             private plotContainer: d3.Selection<SVGElement, any, any, any>;
         // Category elements, as bound by D3
-            categories: d3Select.Selection<Element | d3Select.EnterElement | Document | Window | SVGGElement, ICategory, SVGElement, any>
+            categories: d3Select.Selection<Element | d3Select.EnterElement | Document | Window | SVGGElement, ICategory, SVGElement, any>;
 
             constructor(element: HTMLElement) {
                 // Instantiate main chart container
