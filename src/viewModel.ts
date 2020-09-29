@@ -5,6 +5,8 @@ import IVisualHost = powerbi.extensibility.visual.IVisualHost;
 import ISelectionId = powerbi.visuals.ISelectionId;
 import { dataViewObject } from 'powerbi-visuals-utils-dataviewutils';
 import getFillColorByPropertyName = dataViewObject.getFillColorByPropertyName;
+import { interactivitySelectionService } from 'powerbi-visuals-utils-interactivityutils';
+import SelectableDataPoint = interactivitySelectionService.SelectableDataPoint;
 
 import { VisualSettings } from './settings';
 
@@ -85,7 +87,7 @@ import * as d3Scale from 'd3-scale';
 /**
  * Represents a visual category data item.
  */
-    export interface ICategory {
+    export interface ICategory extends SelectableDataPoint {
         // Name of category
             name: string;
         // Maximum group value
@@ -224,7 +226,9 @@ import * as d3Scale from 'd3-scale';
                                 groups: groups,
                                 min: categoryMinValue,
                                 max: categoryMaxValue,
-                                selectionId: categorySelectionId
+                                selectionId: categorySelectionId,
+                                identity: categorySelectionId,
+                                selected: false
                             });
                     });
                 // Update the dataset min and max values
@@ -232,6 +236,19 @@ import * as d3Scale from 'd3-scale';
                     viewModel.maxValue = datasetMaxValue;
                 // Assign new viewModel
                     this.viewModel = viewModel;
+            }
+        
+        /**
+         * Traverses the ViewModel for all selectable data points and returns them in a consistent shape for interactivity & behavior.
+         */
+            getSelectableDataPoints(): SelectableDataPoint[] {
+                let dataPoints: SelectableDataPoint[] = [];
+                // Category selectors
+                this.viewModel.categories.forEach((c) => dataPoints.push({
+                    identity: c.identity,
+                    selected: c.selected
+                }));
+                return dataPoints;
             }
 
         /**
