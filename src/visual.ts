@@ -109,7 +109,8 @@ export class Visual implements IVisual {
                         this.interactivity.bind(<IDumbbellBehaviorOptions<SelectableDataPoint>>{
                             behavior: this.behavior,
                             dataPoints: this.viewModelManager.getSelectableDataPoints(),
-                            categorySelection: chartManager.categories
+                            categorySelection: chartManager.categories,
+                            clearCatcherSelection: chartManager.clearCatcherContainer
                         });
                 }
         } catch(e) {

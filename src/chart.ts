@@ -17,6 +17,8 @@ import { IViewModel, ICategory, IGroup } from './viewModel';
             private valueAxisContainer: d3.Selection<SVGElement, any, any, any>;
         // SVG group element to consolidate the visual data elements
             private plotContainer: d3.Selection<SVGElement, any, any, any>;
+        // Clear-catcher (used as an 'empty space' for selection events)
+            clearCatcherContainer: d3.Selection<SVGRectElement, any, any, any>;
         // Category elements, as bound by D3
             categories: d3Select.Selection<Element | d3Select.EnterElement | Document | Window | SVGGElement, ICategory, SVGElement, any>;
 
@@ -25,6 +27,10 @@ import { IViewModel, ICategory, IGroup } from './viewModel';
                     this.chartContainer = d3Select.select(element)
                         .append('svg')
                             .attr('id', 'dumbbellChartContainer');
+                // Clear-catcher sits underneath other elements
+                    this.clearCatcherContainer = this.chartContainer
+                        .append('rect')
+                            .classed('clearCatcher', true);
                 // Category & value axes, and plot container are all chldren of main chart container
                     this.categoryAxisContainer = this.chartContainer
                         .append('g')
@@ -46,6 +52,9 @@ import { IViewModel, ICategory, IGroup } from './viewModel';
          */
             updateViewport(viewport: IViewport) {
                 this.chartContainer
+                    .attr('width', viewport.width)
+                    .attr('height', viewport.height);
+                this.clearCatcherContainer
                     .attr('width', viewport.width)
                     .attr('height', viewport.height);
             }

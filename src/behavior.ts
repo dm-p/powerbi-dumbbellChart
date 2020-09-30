@@ -13,6 +13,7 @@ import { ICategory } from './viewModel';
  */
     export interface IDumbbellBehaviorOptions<SelectableDataPoint extends BaseDataPoint> extends IBehaviorOptions<SelectableDataPoint> {
         categorySelection: d3.Selection<any, ICategory, any, any>;
+        clearCatcherSelection: d3.Selection<SVGRectElement, any, any, any>;
     }
 
 /**
@@ -61,6 +62,19 @@ import { ICategory } from './viewModel';
             }
 
         /**
+         * Apply click behaviour to the clear-catcher (clearing active selections if clicked).
+         */
+            protected bindClearCatcher() {
+                const {
+                    clearCatcherSelection
+                } = this.options;
+                clearCatcherSelection.on('click', () => {
+                    const mouseEvent: MouseEvent = getEvent() as MouseEvent || window.event as MouseEvent;
+                    mouseEvent && this.selectionHandler.handleClearSelection();
+                });
+            }
+
+        /**
          * Ensure that class has necessary options and tooling to perform interactivity/behavior requirements as needed.
          * 
          * @param options           - interactivity & behavior options
@@ -73,6 +87,7 @@ import { ICategory } from './viewModel';
                 this.options = options;
                 this.selectionHandler = selectionHandler;
                 this.bindClick();
+                this.bindClearCatcher();
             }
 
         /**
