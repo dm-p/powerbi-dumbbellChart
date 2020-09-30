@@ -244,10 +244,7 @@ import * as d3Scale from 'd3-scale';
             getSelectableDataPoints(): SelectableDataPoint[] {
                 let dataPoints: SelectableDataPoint[] = [];
                 // Category selectors
-                this.viewModel.categories.forEach((c) => dataPoints.push({
-                    identity: c.identity,
-                    selected: c.selected
-                }));
+                this.viewModel.categories.forEach((c) => dataPoints.push(c));
                 return dataPoints;
             }
 
