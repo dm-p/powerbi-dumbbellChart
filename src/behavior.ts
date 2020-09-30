@@ -23,6 +23,26 @@ import { ICategory } from './viewModel';
             protected options: IDumbbellBehaviorOptions<SelectableDataPoint>;
         // Handles selection event delegation to the visual host
             protected selectionHandler: ISelectionHandler;
+        // How much opacity to apply to non-selected data points
+            private static DimmedOpacity: number = 0.4;
+        // How much opacity to apply to selected data points
+            private static DefaultOpacity: number = 1;
+
+        /**
+         * Determine the opacity for a data point, based on selection state within the visual.
+         *
+         * @param selected      - data point selection state
+         * @param hasSelection  - visual selection state
+         */
+            private getFillOpacity(
+                selected: boolean,
+                hasSelection: boolean
+            ) {
+                if (hasSelection && !selected) {
+                    return BehaviorManager.DimmedOpacity;
+                }
+                return BehaviorManager.DefaultOpacity;
+            }
 
         /**
          * Apply click behavior to selections as necessary.
@@ -61,6 +81,10 @@ import { ICategory } from './viewModel';
          * @param hasSelection - whether visual has selection state or not
          */
             public renderSelection(hasSelection: boolean): void {
-                // TODO: handling
+                const {
+                    categorySelection
+                } = this.options;
+                categorySelection
+                    .style('opacity', (d) => this.getFillOpacity(d.selected, hasSelection));
             }
     }
