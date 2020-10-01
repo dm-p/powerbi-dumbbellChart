@@ -110,6 +110,9 @@ export class Visual implements IVisual {
                             behavior: this.behavior,
                             dataPoints: this.viewModelManager.getSelectableDataPoints(),
                             categorySelection: chartManager.categories,
+                            categoryLabelSelection: chartManager.categoryLabels,
+                            pointSelection: chartManager.points,
+                            dataLabelSelection: chartManager.dataLabels,
                             clearCatcherSelection: chartManager.clearCatcherContainer
                         });
                 }
@@ -144,7 +147,7 @@ export class Visual implements IVisual {
             switch (options.objectName) {
                 case 'dataPoints': {
                     // Create a new instance for each group/series and add data-bound properties
-                        this.viewModelManager.viewModel.categories[0].groups.forEach((g) => {
+                        this.viewModelManager.viewModel.groups.forEach((g) => {
                             objects.instances.push({
                                 objectName: options.objectName,
                                 displayName: g.name,
