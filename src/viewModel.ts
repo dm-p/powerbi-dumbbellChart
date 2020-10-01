@@ -69,17 +69,29 @@ import * as d3Scale from 'd3-scale';
     }
 
 /**
+ * Base functionality for groups and group/data points
+ */
+    export interface IGroupBase extends SelectableDataPoint {
+        // Name of group
+            name: string;
+        // Group color
+            color: string;
+        // Group selection ID (for data-bound properties)
+            groupSelectionId: ISelectionId;
+        // Data point value
+            value: number;
+    }
+
+/**
  * Represents a data point within a visual category.
  */
-    export interface IGroup {
+    export interface IGroup extends IGroupBase {
         // Name of group
             name: string;
         // Group selection ID (for unique values of series)
             groupSelectionId: ISelectionId;
         // Data point selection ID (intersection of category/series/measure)
             dataPointSelectionId: ISelectionId;
-        // Data point value
-            value: number;
         // Data point color
             color: string;
     }
@@ -108,6 +120,8 @@ import * as d3Scale from 'd3-scale';
             isValid: boolean;
         // Visual margin values
             margin: IMargin;
+        // Distinct groups/series in the visual data
+            groups: IGroupBase[];
         // Visual category data items
             categories: ICategory[];
         // Parsed visual settings
@@ -208,13 +222,26 @@ import * as d3Scale from 'd3-scale';
                                             'fillColor',
                                             this.host.colorPalette.getColor(groupName).value
                                         );
+                                    // On the first pass through categories, make sure that our distinct group list is populated
+                                        if (ci === 0) {
+                                            viewModel.groups.push({
+                                                name: groupName,
+                                                color: color,
+                                                groupSelectionId: groupSelectionId,
+                                                value: groupValue,
+                                                identity: groupSelectionId,
+                                                selected: false
+                                            });
+                                        }
                                     // Return a valid IGroup for this iteration.
                                         return {
                                             name: groupName,
                                             groupSelectionId: groupSelectionId,
                                             dataPointSelectionId: dataPointSelectionId,
                                             value: groupValue,
-                                            color: color
+                                            color: color,
+                                            identity: dataPointSelectionId,
+                                            selected: false
                                         }
                                 });
                         // Resolve dataset min/max based on discovered group min/max
@@ -244,7 +271,13 @@ import * as d3Scale from 'd3-scale';
             getSelectableDataPoints(): SelectableDataPoint[] {
                 let dataPoints: SelectableDataPoint[] = [];
                 // Category selectors
-                this.viewModel.categories.forEach((c) => dataPoints.push(c));
+                this.viewModel.categories.forEach((c) => {
+                    dataPoints.push(c);
+                    // Data points (category x group)
+                    c.groups.forEach((g) => dataPoints.push(g));
+                });
+                // Distinct group/series selectors
+                this.viewModel.groups.forEach((g) => dataPoints.push(g));
                 return dataPoints;
             }
 
@@ -320,6 +353,7 @@ import * as d3Scale from 'd3-scale';
                         left: 10
                     },
                     categories: [],
+                    groups: [],
                     settings: settings,
                     categoryAxis: null,
                     valueAxis: null,

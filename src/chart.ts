@@ -5,7 +5,7 @@ import * as d3Select from 'd3-selection';
 import * as d3Axis from 'd3-axis';
 
 import { ConnectingLineSettings } from './settings';
-import { IViewModel, ICategory, IGroup } from './viewModel';
+import { IViewModel, ICategory, IGroup, IGroupBase } from './viewModel';
 
     export class ChartManager {
 
@@ -20,7 +20,13 @@ import { IViewModel, ICategory, IGroup } from './viewModel';
         // Clear-catcher (used as an 'empty space' for selection events)
             clearCatcherContainer: d3.Selection<SVGRectElement, any, any, any>;
         // Category elements, as bound by D3
-            categories: d3Select.Selection<Element | d3Select.EnterElement | Document | Window | SVGGElement, ICategory, SVGElement, any>;
+            categories: d3Select.Selection<SVGLineElement, ICategory, any, any>;
+        // Individual group elements, as bound by D3
+            points: d3.Selection<SVGCircleElement, IGroup, any, ICategory>;
+        // Data label elements, as bound by D3
+            dataLabels: d3.Selection<SVGTextElement, IGroupBase, any, any>;
+        // Category axis label elements, as bound by D3
+            categoryLabels: d3.Selection<SVGTextElement, ICategory, any, any>;
 
             constructor(element: HTMLElement) {
                 // Instantiate main chart container
@@ -101,7 +107,7 @@ import { IViewModel, ICategory, IGroup } from './viewModel';
          * @param viewModel     - visual ViewModel
          */
             private rebindCategories(viewModel: IViewModel) {
-                this.categories = this.plotContainer
+                 const visualData = this.plotContainer
                     .selectAll('.category')
                         .data(viewModel.categories)
                         .join(
@@ -138,7 +144,7 @@ import { IViewModel, ICategory, IGroup } from './viewModel';
                                     group
                                         .filter((d, di) => di === 0)
                                         .selectAll('.dataLabel')
-                                        .data((d) => d.groups)
+                                        .data(viewModel.groups)
                                         .join('text')
                                             .classed('dataLabel', true)
                                             .call(
@@ -178,7 +184,7 @@ import { IViewModel, ICategory, IGroup } from './viewModel';
                                     update
                                         .filter((d, di) => di === 0)
                                         .selectAll('.dataLabel')
-                                        .data((d) => d.groups)
+                                        .data(viewModel.groups)
                                         .join('text')
                                             .classed('dataLabel', true)
                                             .call(
@@ -193,7 +199,17 @@ import { IViewModel, ICategory, IGroup } from './viewModel';
                                 exit.remove();
                             }
                         );
-
+                // Select the elements we require for category interactivity
+                    this.categories = visualData.selectAll('.dumbbellLine');
+                // Select category axis labels and bind categories, for interactivity purposes
+                    this.categoryLabels = this.categoryAxisContainer
+                        .selectAll('.tick text');
+                    this.categoryLabels
+                        .datum((d, di) => viewModel.categories[di]);
+                // Get our selection of points for interactivity purposes
+                    this.points = visualData.selectAll('.dumbbellPoint');
+                // Get our selection of data labels for interactivity purposes
+                    this.dataLabels = visualData.selectAll('.dataLabel');
             }
 
         /**
