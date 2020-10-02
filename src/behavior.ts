@@ -88,8 +88,27 @@ import { ICategory, IGroup, IGroupBase } from './viewModel';
             }
 
         /**
+         * Apply context menu behavior to selections as necessary.
+         */
+            protected bindContextMenu() {
+                const {
+                    categorySelection,
+                    categoryLabelSelection,
+                    pointSelection,
+                    dataLabelSelection,
+                    clearCatcherSelection
+                } = this.options;
+                categorySelection.on('contextmenu', (d) => this.handleContextMenu(d));
+                categoryLabelSelection.on('contextmenu', (d) => this.handleContextMenu(d));
+                pointSelection.on('contextmenu', (d) => this.handleContextMenu(d));
+                dataLabelSelection.on('contextmenu', (d) => this.handleContextMenu(d));
+                clearCatcherSelection.on('contextmenu', () => this.handleContextMenu(null));
+            }
+
+        /**
          * Abstraction of common click event handling for a `SelectableDataPoint`
-         * @param d 
+         *
+         * @param d     - datum from selection
          */
             private handleSelectionClick(
                 d: ICategory | IGroupBase
@@ -102,7 +121,26 @@ import { ICategory, IGroup, IGroupBase } from './viewModel';
             }
 
         /**
-         * Apply click behaviour to the clear-catcher (clearing active selections if clicked).
+         * Abstraction of common context menu event handling for a `SelectableDataPoint`.
+         *
+         * @param d     - datum from selection
+         */
+            handleContextMenu(
+                d: ICategory | IGroupBase
+            ) {
+                const mouseEvent: MouseEvent = getEvent() as MouseEvent || window.event as MouseEvent;
+                mouseEvent.preventDefault();
+                mouseEvent && this.selectionHandler.handleContextMenu(
+                    d,
+                    {
+                        x: mouseEvent.clientX,
+                        y: mouseEvent.clientY
+                    }
+                );
+            }
+
+        /**
+         * Apply click behavior to the clear-catcher (clearing active selections if clicked).
          */
             protected bindClearCatcher() {
                 const {
@@ -127,6 +165,7 @@ import { ICategory, IGroup, IGroupBase } from './viewModel';
                 this.options = options;
                 this.selectionHandler = selectionHandler;
                 this.bindClick();
+                this.bindContextMenu();
                 this.bindClearCatcher();
             }
 
