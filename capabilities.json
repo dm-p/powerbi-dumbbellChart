@@ -116,5 +116,11 @@
                 }
             }
         }
-    ]
+    ],
+    "tooltips": {
+        "supportedTypes": {
+            "default": true,
+            "canvas": true
+        }
+    }
 }

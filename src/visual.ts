@@ -42,8 +42,10 @@ import { interactivitySelectionService, interactivityBaseService } from 'powerbi
 import IInteractivityService = interactivityBaseService.IInteractivityService;
 import SelectableDataPoint = interactivitySelectionService.SelectableDataPoint;
 
+import { ITooltipServiceWrapper, createTooltipServiceWrapper, TooltipEventArgs } from 'powerbi-visuals-utils-tooltiputils';
+
 import { VisualSettings } from './settings';
-import { ViewModelManager } from './viewModel';
+import { IGroupDataPoint, ViewModelManager } from './viewModel';
 import { DomManager } from './dom';
 import { BehaviorManager, IDumbbellBehaviorOptions } from './behavior';
 
@@ -62,6 +64,8 @@ export class Visual implements IVisual {
         private interactivity: IInteractivityService<SelectableDataPoint>;
     // Behavior of data points
         private behavior: BehaviorManager<SelectableDataPoint>;
+    // Handling of tooltip display
+        private tooltipServiceWrapper: ITooltipServiceWrapper;
 
     constructor(options: VisualConstructorOptions) {
         console.log('Visual constructor', options);
@@ -71,6 +75,10 @@ export class Visual implements IVisual {
         this.domManager = new DomManager(this.target);
         this.interactivity = interactivitySelectionService.createInteractivitySelectionService(this.host);
         this.behavior = new BehaviorManager();
+        this.tooltipServiceWrapper = createTooltipServiceWrapper(
+            this.host.tooltipService,
+            this.target
+        );
     }
 
     public update(options: VisualUpdateOptions) {
@@ -115,6 +123,12 @@ export class Visual implements IVisual {
                             dataLabelSelection: chartManager.dataLabels,
                             clearCatcherSelection: chartManager.clearCatcherContainer
                         });
+                    // Bind tooltip display
+                        this.tooltipServiceWrapper.addTooltip(
+                            chartManager.points,
+                            (tte: TooltipEventArgs<IGroupDataPoint>) => tte.data.tooltipData,
+                            (tte: TooltipEventArgs<IGroupDataPoint>) => tte.data.dataPointSelectionId
+                        );
                 }
         } catch(e) {
             // (For now) log error details and pause execution for debugging

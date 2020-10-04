@@ -6,7 +6,7 @@ import IInteractiveBehavior = interactivityBaseService.IInteractiveBehavior;
 import ISelectionHandler = interactivityBaseService.ISelectionHandler;
 import getEvent = interactivityUtils.getEvent;
 
-import { ICategory, IGroup, IGroupBase } from './viewModel';
+import { ICategory, IGroupDataPoint, IGroupBase } from './viewModel';
 
 /**
  * Behavior options for interactivity.
@@ -15,7 +15,7 @@ import { ICategory, IGroup, IGroupBase } from './viewModel';
         // Elements denoting a selectable category in the visual
             categorySelection: d3.Selection<any, ICategory, any, any>;
         // Elements denoting a selectable data point in the visual
-            pointSelection: d3.Selection<SVGCircleElement, IGroup, any, ICategory>;
+            pointSelection: d3.Selection<SVGCircleElement, IGroupDataPoint, any, ICategory>;
         // Elements denotic a selectable data label in the visual
             dataLabelSelection: d3.Selection<SVGTextElement, IGroupBase, any, any>;
         // Elements denoting a selectable category label in the visual

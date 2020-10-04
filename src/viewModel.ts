@@ -7,6 +7,7 @@ import { dataViewObject } from 'powerbi-visuals-utils-dataviewutils';
 import getFillColorByPropertyName = dataViewObject.getFillColorByPropertyName;
 import { interactivitySelectionService } from 'powerbi-visuals-utils-interactivityutils';
 import SelectableDataPoint = interactivitySelectionService.SelectableDataPoint;
+import VisualTooltipDataItem = powerbi.extensibility.VisualTooltipDataItem;
 
 import { VisualSettings } from './settings';
 
@@ -85,7 +86,7 @@ import * as d3Scale from 'd3-scale';
 /**
  * Represents a data point within a visual category.
  */
-    export interface IGroup extends IGroupBase {
+    export interface IGroupDataPoint extends IGroupBase {
         // Name of group
             name: string;
         // Group selection ID (for unique values of series)
@@ -94,6 +95,8 @@ import * as d3Scale from 'd3-scale';
             dataPointSelectionId: ISelectionId;
         // Data point color
             color: string;
+        // Default tooltip data
+            tooltipData: VisualTooltipDataItem[];
     }
 
 /**
@@ -109,7 +112,7 @@ import * as d3Scale from 'd3-scale';
         // Category selection ID
             selectionId: ISelectionId;
         // Category group items
-            groups: IGroup[];
+            groups: IGroupDataPoint[];
     }
 
 /**
@@ -192,7 +195,7 @@ import * as d3Scale from 'd3-scale';
                             // The number of entries in the categorical.values array denotes how many groups we have in each
                             // category, so we can iterate over these too and use the category index from the outer foreach
                             // to access the correct measure value from each group's values array.
-                                const groups: IGroup[] = valueGroupings.grouped().map((g, gi) => {
+                                const groups: IGroupDataPoint[] = valueGroupings.grouped().map((g, gi) => {
                                     // Get our measure column (which is the first values array element)
                                         const measure = g.values.find((m) => m.source.roles.measure);
                                     // Get group name
@@ -222,6 +225,15 @@ import * as d3Scale from 'd3-scale';
                                             'fillColor',
                                             this.host.colorPalette.getColor(groupName).value
                                         );
+                                    // Add tooltip data
+                                        let tooltipData: VisualTooltipDataItem[] = [
+                                            {
+                                                header: `${categoryName} - ${groupName}`,
+                                                displayName: measure.source.displayName,
+                                                value: `${groupValue}`,
+                                                color: color
+                                            }
+                                        ];
                                     // On the first pass through categories, make sure that our distinct group list is populated
                                         if (ci === 0) {
                                             viewModel.groups.push({
@@ -241,7 +253,8 @@ import * as d3Scale from 'd3-scale';
                                             value: groupValue,
                                             color: color,
                                             identity: dataPointSelectionId,
-                                            selected: false
+                                            selected: false,
+                                            tooltipData: tooltipData
                                         }
                                 });
                         // Resolve dataset min/max based on discovered group min/max

@@ -5,7 +5,7 @@ import * as d3Select from 'd3-selection';
 import * as d3Axis from 'd3-axis';
 
 import { ConnectingLineSettings } from './settings';
-import { IViewModel, ICategory, IGroup, IGroupBase } from './viewModel';
+import { IViewModel, ICategory, IGroupDataPoint, IGroupBase } from './viewModel';
 
     export class ChartManager {
 
@@ -22,7 +22,7 @@ import { IViewModel, ICategory, IGroup, IGroupBase } from './viewModel';
         // Category elements, as bound by D3
             categories: d3Select.Selection<SVGLineElement, ICategory, any, any>;
         // Individual group elements, as bound by D3
-            points: d3.Selection<SVGCircleElement, IGroup, any, ICategory>;
+            points: d3.Selection<SVGCircleElement, IGroupDataPoint, any, ICategory>;
         // Data label elements, as bound by D3
             dataLabels: d3.Selection<SVGTextElement, IGroupBase, any, any>;
         // Category axis label elements, as bound by D3
@@ -259,7 +259,7 @@ import { IViewModel, ICategory, IGroup, IGroupBase } from './viewModel';
          * @param radius        - circle radius, in px
          */
             private transformDumbbellCircle(
-                selection: d3.Selection<SVGCircleElement, IGroup, any, any>,
+                selection: d3.Selection<SVGCircleElement, IGroupDataPoint, any, any>,
                 categoryScale: d3.ScaleBand<string>,
                 valueScale: d3.ScaleLinear<number, number>,
                 radius: number
@@ -281,7 +281,7 @@ import { IViewModel, ICategory, IGroup, IGroupBase } from './viewModel';
          * @param show          - whether to show labels or not
          */
             private transformDataLabel(
-                selection: d3.Selection<SVGTextElement, IGroup, any, any>,
+                selection: d3.Selection<SVGTextElement, IGroupDataPoint, any, any>,
                 valueScale: d3.ScaleLinear<number, number>,
                 show: boolean
             ) {
