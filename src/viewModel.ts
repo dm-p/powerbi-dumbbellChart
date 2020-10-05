@@ -198,6 +198,8 @@ import * as d3Scale from 'd3-scale';
                                 const groups: IGroupDataPoint[] = valueGroupings.grouped().map((g, gi) => {
                                     // Get our measure column (which is the first values array element)
                                         const measure = g.values.find((m) => m.source.roles.measure);
+                                    // Get any tooltip columns (0..many)
+                                        const tooltips = g.values.filter((tt) => tt.source.roles.tooltips);
                                     // Get group name
                                         const groupName = <string>g.name;
                                     // Series-level selection ID
@@ -234,6 +236,15 @@ import * as d3Scale from 'd3-scale';
                                                 color: color
                                             }
                                         ];
+                                    // Add any other measure values from the tooltips data role
+                                        tooltips.forEach((tt) => {
+                                            tooltipData.push({
+                                                displayName: tt.source.displayName,
+                                                value: `${tt.values[ci]}`,
+                                                color: color,
+                                                opacity: '0'
+                                            });
+                                        });
                                     // On the first pass through categories, make sure that our distinct group list is populated
                                         if (ci === 0) {
                                             viewModel.groups.push({
