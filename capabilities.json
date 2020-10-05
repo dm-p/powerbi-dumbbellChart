@@ -22,6 +22,11 @@
                     "integer": true
                 }
             ]
+        },
+        {
+            "displayName": "Tooltips",
+            "name": "tooltips",
+            "kind": "Measure"
         }
     ],
     "objects": {
@@ -109,6 +114,11 @@
                             {
                                 "bind": {
                                     "to": "measure"
+                                }
+                            },
+                            {
+                                "bind": {
+                                    "to": "tooltips"
                                 }
                             }
                         ]
