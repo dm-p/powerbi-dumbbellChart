@@ -5,7 +5,7 @@ import * as d3Select from 'd3-selection';
 import * as d3Axis from 'd3-axis';
 
 import { ConnectingLineSettings } from './settings';
-import { IViewModel, ICategory, IGroupDataPoint, IGroupBase } from './viewModel';
+import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint } from './viewModel';
 
     export class ChartManager {
 
@@ -124,7 +124,8 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase } from './viewModel'
                                                 this.transformDumbbellLine,
                                                 viewModel.categoryAxis.scale,
                                                 viewModel.valueAxis.scale,
-                                                viewModel.settings.connectingLines
+                                                viewModel.settings.connectingLines,
+                                                viewModel.shouldDimPoint
                                             );
 
                                 // Add circles for data points
@@ -137,7 +138,8 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase } from './viewModel'
                                                 this.transformDumbbellCircle,
                                                 viewModel.categoryAxis.scale,
                                                 viewModel.valueAxis.scale,
-                                                viewModel.settings.dataPoints.radius
+                                                viewModel.settings.dataPoints.radius,
+                                                viewModel.shouldDimPoint
                                             );
 
                                 // Add data labels for first category
@@ -150,7 +152,8 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase } from './viewModel'
                                             .call(
                                                 this.transformDataLabel,
                                                 viewModel.valueAxis.scale,
-                                                viewModel.settings.dataLabels.show
+                                                viewModel.settings.dataLabels.show,
+                                                viewModel.shouldDimPoint
                                             );
 
                                 // Group element is used for any further operations
@@ -166,7 +169,8 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase } from './viewModel'
                                             this.transformDumbbellLine,
                                             viewModel.categoryAxis.scale,
                                             viewModel.valueAxis.scale,
-                                            viewModel.settings.connectingLines
+                                            viewModel.settings.connectingLines,
+                                            viewModel.shouldDimPoint
                                         );
                                 // Re-position circle coordinates
                                     update
@@ -178,7 +182,8 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase } from './viewModel'
                                                 this.transformDumbbellCircle,
                                                 viewModel.categoryAxis.scale,
                                                 viewModel.valueAxis.scale,
-                                                viewModel.settings.dataPoints.radius
+                                                viewModel.settings.dataPoints.radius,
+                                                viewModel.shouldDimPoint
                                             );
                                 // Re-position data labels
                                     update
@@ -190,7 +195,8 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase } from './viewModel'
                                             .call(
                                                 this.transformDataLabel,
                                                 viewModel.valueAxis.scale,
-                                                viewModel.settings.dataLabels.show
+                                                viewModel.settings.dataLabels.show,
+                                                viewModel.shouldDimPoint
                                             );
                                 // Group element is used for any further operations
                                     return update;
@@ -205,7 +211,8 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase } from './viewModel'
                     this.categoryLabels = this.categoryAxisContainer
                         .selectAll('.tick text');
                     this.categoryLabels
-                        .datum((d, di) => viewModel.categories[di]);
+                        .datum((d, di) => viewModel.categories[di])
+                        .classed('emphasized', (d) => viewModel.shouldEmphasizePoint(d));
                 // Get our selection of points for interactivity purposes
                     this.points = visualData.selectAll('.dumbbellPoint');
                 // Get our selection of data labels for interactivity purposes
@@ -229,16 +236,18 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase } from './viewModel'
         /**
          * Consolidates logic to handle positioning and attributes of the dumbbell line element within a category
          *
-         * @param selection     - D3 selection (line) to apply transformation to
-         * @param categoryScale - category scale object to use for positioning
-         * @param valueScale    - value scale object to use for plotting by measure value
-         * @param settings      - parsed connecting line settings from dataView
+         * @param selection         - D3 selection (line) to apply transformation to
+         * @param categoryScale     - category scale object to use for positioning
+         * @param valueScale        - value scale object to use for plotting by measure value
+         * @param settings          - parsed connecting line settings from dataView
+         * @param shouldDimPoint    - helper method to apply styling for selection/highlighting
          */
             private transformDumbbellLine(
                 selection: d3.Selection<SVGLineElement, ICategory, any, any>,
                 categoryScale: d3.ScaleBand<string>,
                 valueScale: d3.ScaleLinear<number, number>,
-                settings: ConnectingLineSettings
+                settings: ConnectingLineSettings,
+                shouldDimPoint: (dataPoint: VisualDataPoint) => boolean
             ) {
                 const midpoint = categoryScale.bandwidth() / 2;
                 selection
@@ -247,50 +256,57 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase } from './viewModel'
                     .attr('y1', midpoint)
                     .attr('y2', midpoint)
                     .style('stroke-width', settings.strokeWidth)
-                    .style('stroke', settings.color);
+                    .style('stroke', settings.color)
+                    .classed('dimmed', (d) => shouldDimPoint(d));
             }
 
         /**
          * Consolidates logic to handle positioning and attributes of the dumbbell circle elements within a category
          *
-         * @param selection     - D3 selection (circle) to apply transformation to
-         * @param categoryScale - category scale object to use for positioning
-         * @param valueScale    - value scale object to use for plotting by measure value
-         * @param radius        - circle radius, in px
+         * @param selection         - D3 selection (circle) to apply transformation to
+         * @param categoryScale     - category scale object to use for positioning
+         * @param valueScale        - value scale object to use for plotting by measure value
+         * @param radius            - circle radius, in px
+         * @param shouldDimPoint    - helper method to apply styling for selection/highlighting
          */
             private transformDumbbellCircle(
                 selection: d3.Selection<SVGCircleElement, IGroupDataPoint, any, any>,
                 categoryScale: d3.ScaleBand<string>,
                 valueScale: d3.ScaleLinear<number, number>,
-                radius: number
+                radius: number,
+                shouldDimPoint: (dataPoint: VisualDataPoint) => boolean
             ) {
                 const
                     midpoint = categoryScale.bandwidth() / 2;
                 selection
-                    .attr('cx', (d) => valueScale(d.value))
+                    .attr('cx', (d) => valueScale(d.highlighted ? d.highlightedValue : d.value))
                     .attr('cy', midpoint)
                     .attr('r', radius)
-                    .attr('fill', (d) => d.color);
+                    .attr('fill', (d) => d.color)
+                    .classed('dimmed', (d) => shouldDimPoint(d));
             }
 
         /**
          * Consolidates logic to handle positioning and attributes of the data label text elements within a category
          *
-         * @param selection     - D3 selection (circle) to apply transformation to
-         * @param valueScale    - value scale object to use for plotting by measure value
-         * @param show          - whether to show labels or not
+         * @param selection         - D3 selection (circle) to apply transformation to
+         * @param valueScale        - value scale object to use for plotting by measure value
+         * @param show              - whether to show labels or not
+         * @param shouldDimPoint    - helper method to apply styling for selection/highlighting
          */
             private transformDataLabel(
                 selection: d3.Selection<SVGTextElement, IGroupDataPoint, any, any>,
                 valueScale: d3.ScaleLinear<number, number>,
-                show: boolean
+                show: boolean,
+                shouldDimPoint: (dataPoint: VisualDataPoint) => boolean
             ) {
                 selection
                     .attr('x', (d) => valueScale(d.value))
                     .attr('y', 0)
                     .attr('fill', (d) => d.color)
                     .text((d) => d.name)
-                    .style('visibility', show ? 'visible' : 'hidden');
+                    .style('visibility', show ? 'visible' : 'hidden')
+                    .classed('dimmed', (d) => shouldDimPoint(d));
             }        
 
     }
