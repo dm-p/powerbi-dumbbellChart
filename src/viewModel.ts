@@ -70,9 +70,17 @@ import * as d3Scale from 'd3-scale';
     }
 
 /**
+ * Provides common functionality for data points within our visual.
+ */
+    export interface VisualDataPoint extends SelectableDataPoint {
+        // Indicates whether data point is highlighed or not
+            highlighted: boolean;
+    }
+
+/**
  * Base functionality for groups and group/data points
  */
-    export interface IGroupBase extends SelectableDataPoint {
+    export interface IGroupBase extends VisualDataPoint {
         // Name of group
             name: string;
         // Group color
@@ -81,6 +89,8 @@ import * as d3Scale from 'd3-scale';
             groupSelectionId: ISelectionId;
         // Data point value
             value: number;
+        // Highlighted value (if applicable)
+            highlightedValue?: number;
     }
 
 /**
@@ -102,7 +112,7 @@ import * as d3Scale from 'd3-scale';
 /**
  * Represents a visual category data item.
  */
-    export interface ICategory extends SelectableDataPoint {
+    export interface ICategory extends VisualDataPoint {
         // Name of category
             name: string;
         // Maximum group value
@@ -137,6 +147,14 @@ import * as d3Scale from 'd3-scale';
             minValue: number;
         // Maximum value for our measure axis
             maxValue: number;
+        // Whether selection is applied to the visual (extracted prior to re-mapping, and updated from BehaviorManager after that)
+            hasSelection: boolean;
+        // Whether highlights have been applied to the dataView
+            hasHighlights: boolean;
+        // Determine if we should dim a data point based on selection/highlight status
+            shouldDimPoint (dataPoint: VisualDataPoint): boolean;
+        // Determine if we should emphazise (embolden) a textual data point based on selection/highlight status
+            shouldEmphasizePoint (dataPoint: VisualDataPoint): boolean;
     }
 
 /**
@@ -160,6 +178,8 @@ import * as d3Scale from 'd3-scale';
          * @param settings  - parsed visual settings
          */
             mapDataView(dataView: DataView, settings: VisualSettings) {
+                // Get any existing selection info prior to re-building
+                    const initalSelection = this.getSelectableDataPoints();
                 // Declare empty viewModel
                     const viewModel = this.getNewViewModel(settings);
                 // For safety's sake, handle the situation where we might not have validated beforehand, so
@@ -176,6 +196,13 @@ import * as d3Scale from 'd3-scale';
                     const categoryColumn =  dataView.categorical.categories[0];
                 // Obtain the value groupings (incl. all values)
                     const valueGroupings = dataView.categorical.values;
+                // Confirm whether the visual has a selection applied prior to re-build
+                    viewModel.hasSelection = initalSelection.filter((dp) => dp.selected).length > 0;
+                // Check for the presence of highlights in measure values
+                    viewModel.hasHighlights = valueGroupings.filter((vg) => vg.highlights).length > 0;
+                // Helper to look in the selection details for existence of selected status
+                    const isSelected = (selectionId: ISelectionId): boolean => 
+                            initalSelection?.find((dp) => selectionId.equals(<ISelectionId>dp.identity))?.selected;
                 // Traverse the data view and map.
                 // For each category value, we can use its index to access its corresponding value in each array of values
                 // in each categorical.values grouping and bring it in.
@@ -212,9 +239,13 @@ import * as d3Scale from 'd3-scale';
                                                 .withSeries(valueGroupings, g)
                                                 .withMeasure(measure.source.queryName)
                                                 .createSelectionId();
+                                    // Manage highlight status for data point
+                                        const pointHighlighted = viewModel.hasHighlights && measure.highlights[ci] !== null;
                                     // Get current value. Similar to category, it needs to be type-cast. As we have restricted
                                     // valid data types in our data roles, we know it's safe to cast it to a number.
                                         const groupValue = <number>measure.values[ci];
+                                    // If our data is cross-highlighted, obtain the highlight value
+                                        const pointHighlightedValue = pointHighlighted && <number>measure.highlights[ci];
                                     // Set group min/max to measure value if it's at the extremes
                                         categoryMinValue = Math.min(categoryMinValue || groupValue, groupValue);
                                         categoryMaxValue = Math.max(categoryMaxValue || groupValue, groupValue);
@@ -236,6 +267,15 @@ import * as d3Scale from 'd3-scale';
                                                 color: color
                                             }
                                         ];
+                                    // If there's a highlight, we should add that in
+                                        if (pointHighlighted) {
+                                            tooltipData.push({
+                                                displayName: 'Highlighted',
+                                                value: `${pointHighlightedValue}`,
+                                                color: color,
+                                                opacity: '0'
+                                            });
+                                        }
                                     // Add any other measure values from the tooltips data role
                                         tooltips.forEach((tt) => {
                                             tooltipData.push({
@@ -247,13 +287,17 @@ import * as d3Scale from 'd3-scale';
                                         });
                                     // On the first pass through categories, make sure that our distinct group list is populated
                                         if (ci === 0) {
+                                            // Manage highlight status for group/data label
+                                                const groupHighlighted = viewModel.hasHighlights &&
+                                                        measure.highlights.filter((h) => h !== null).length === measure.highlights.length;
                                             viewModel.groups.push({
                                                 name: groupName,
                                                 color: color,
                                                 groupSelectionId: groupSelectionId,
                                                 value: groupValue,
                                                 identity: groupSelectionId,
-                                                selected: false
+                                                selected: isSelected(groupSelectionId),
+                                                highlighted: groupHighlighted
                                             });
                                         }
                                     // Return a valid IGroup for this iteration.
@@ -262,15 +306,20 @@ import * as d3Scale from 'd3-scale';
                                             groupSelectionId: groupSelectionId,
                                             dataPointSelectionId: dataPointSelectionId,
                                             value: groupValue,
+                                            highlightedValue: pointHighlightedValue,
                                             color: color,
                                             identity: dataPointSelectionId,
-                                            selected: false,
-                                            tooltipData: tooltipData
+                                            selected: isSelected(dataPointSelectionId),
+                                            tooltipData: tooltipData,
+                                            highlighted: pointHighlighted
                                         }
                                 });
                         // Resolve dataset min/max based on discovered group min/max
                             datasetMinValue = Math.min(datasetMinValue || categoryMinValue, categoryMinValue);
                             datasetMaxValue = Math.max(datasetMaxValue || categoryMaxValue, categoryMaxValue);
+                        // Derive the highlight status, based on our logic (only highlight if all data points are also highlighted)
+                            const categoryHighlighted = viewModel.hasHighlights &&
+                                    groups.filter((g) => g.highlighted).length === groups.length;
                         // Push the category object into the view model's categories array with the correct properties.
                             viewModel.categories.push({
                                 name: categoryName,
@@ -279,7 +328,8 @@ import * as d3Scale from 'd3-scale';
                                 max: categoryMaxValue,
                                 selectionId: categorySelectionId,
                                 identity: categorySelectionId,
-                                selected: false
+                                selected: isSelected(categorySelectionId),
+                                highlighted: categoryHighlighted
                             });
                     });
                 // Update the dataset min and max values
@@ -382,7 +432,23 @@ import * as d3Scale from 'd3-scale';
                     categoryAxis: null,
                     valueAxis: null,
                     minValue: 0,
-                    maxValue: 0
+                    maxValue: 0,
+                    hasSelection: false,
+                    hasHighlights: false,
+                    shouldDimPoint: (dataPoint: VisualDataPoint) => {
+                        switch (true) {
+                            case this.viewModel.hasSelection && !dataPoint.selected:
+                            case this.viewModel.hasHighlights && !dataPoint.highlighted: {
+                                return true;
+                            }
+                            default: {
+                                return false;
+                            }
+                        }
+                    },
+                    shouldEmphasizePoint: (dataPoint: VisualDataPoint) => {
+                        return dataPoint.selected || false;
+                    }
                 }
             }
 

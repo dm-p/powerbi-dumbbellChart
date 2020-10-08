@@ -121,7 +121,8 @@ export class Visual implements IVisual {
                             categoryLabelSelection: chartManager.categoryLabels,
                             pointSelection: chartManager.points,
                             dataLabelSelection: chartManager.dataLabels,
-                            clearCatcherSelection: chartManager.clearCatcherContainer
+                            clearCatcherSelection: chartManager.clearCatcherContainer,
+                            viewModel: this.viewModelManager.viewModel
                         });
                     // Bind tooltip display
                         this.tooltipServiceWrapper.addTooltip(

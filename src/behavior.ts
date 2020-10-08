@@ -6,7 +6,7 @@ import IInteractiveBehavior = interactivityBaseService.IInteractiveBehavior;
 import ISelectionHandler = interactivityBaseService.ISelectionHandler;
 import getEvent = interactivityUtils.getEvent;
 
-import { ICategory, IGroupDataPoint, IGroupBase } from './viewModel';
+import { ICategory, IGroupDataPoint, IGroupBase, IViewModel } from './viewModel';
 
 /**
  * Behavior options for interactivity.
@@ -22,6 +22,8 @@ import { ICategory, IGroupDataPoint, IGroupBase } from './viewModel';
             categoryLabelSelection: d3.Selection<SVGTextElement, ICategory, any, any>;
         // Element performing the role of clear-catcher (clears selection)
             clearCatcherSelection: d3.Selection<SVGRectElement, any, any, any>;
+        // Visual ViewModel
+            viewModel: IViewModel;
     }
 
 /**
@@ -32,44 +34,6 @@ import { ICategory, IGroupDataPoint, IGroupBase } from './viewModel';
             protected options: IDumbbellBehaviorOptions<SelectableDataPoint>;
         // Handles selection event delegation to the visual host
             protected selectionHandler: ISelectionHandler;
-        // How much opacity to apply to non-selected data points
-            private static DimmedOpacity: number = 0.4;
-        // How much opacity to apply to selected data points
-            private static DefaultOpacity: number = 1;
-        // Standard font weight for elements that we will embolden upon selection
-            private static NormalFontWeight: string = 'normal';
-        // Bold font weight for elements that we will embolden upon selection
-            private static BoldFontWeight: string = 'bold';
-
-        /**
-         * Determine the opacity for a data point, based on selection state within the visual.
-         *
-         * @param selected      - data point selection state
-         * @param hasSelection  - visual selection state
-         */
-            private getFillOpacity(
-                selected: boolean,
-                hasSelection: boolean
-            ) {
-                if (hasSelection && !selected) {
-                    return BehaviorManager.DimmedOpacity;
-                }
-                return BehaviorManager.DefaultOpacity;
-            }
-
-        /**
-         * Determine if an element should be emboldened or not, based on selection state within the visual.
-         *
-         * @param selected      - data point selection state
-         */
-            private getFontWeight(
-                selected: boolean
-            ) {
-                if (selected) {
-                    return BehaviorManager.BoldFontWeight;
-                }
-                return BehaviorManager.NormalFontWeight;
-            }
 
         /**
          * Apply click behavior to selections as necessary.
@@ -179,15 +143,18 @@ import { ICategory, IGroupDataPoint, IGroupBase } from './viewModel';
                     categorySelection,
                     categoryLabelSelection,
                     pointSelection,
-                    dataLabelSelection
+                    dataLabelSelection,
+                    viewModel
                 } = this.options;
+                // Update viewModel selection state to match current state
+                    viewModel.hasSelection = hasSelection;
                 categorySelection
-                    .style('opacity', (d) => this.getFillOpacity(d.selected, hasSelection));
+                    .classed('dimmed', (d) => viewModel.shouldDimPoint(d));
                 categoryLabelSelection
-                    .style('font-weight', (d) => this.getFontWeight(d.selected));
+                    .classed('emphasized', (d) => viewModel.shouldEmphasizePoint(d));
                 pointSelection
-                    .style('opacity', (d) => this.getFillOpacity(d.selected, hasSelection));
+                    .classed('dimmed', (d) => viewModel.shouldDimPoint(d));
                 dataLabelSelection
-                    .style('opacity', (d) => this.getFillOpacity(d.selected, hasSelection));
+                    .classed('dimmed', (d) => viewModel.shouldDimPoint(d));
             }
     }
