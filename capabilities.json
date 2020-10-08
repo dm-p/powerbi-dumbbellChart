@@ -133,5 +133,11 @@
             "canvas": true
         }
     },
-    "supportsHighlight": true
+    "supportsHighlight": true,
+    "drilldown": {
+        "roles": [
+            "category",
+            "series"
+        ]
+    }
 }
