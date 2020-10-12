@@ -3,12 +3,15 @@ import IViewport = powerbi.IViewport;
 
 import * as d3Select from 'd3-selection';
 import * as d3Axis from 'd3-axis';
+import * as d3Transition from 'd3-transition';
 
 import { ConnectingLineSettings } from './settings';
 import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint } from './viewModel';
 
     export class ChartManager {
 
+        // Default transition duration time, in ms
+            private static DefaultTransitionDuration = 500;
         // SVG element for the entire chart; will be a child of the main visual element
             private chartContainer: d3.Selection<SVGElement, any, any, any>;
         // SVG group element to consolidate the category axis elements
@@ -251,13 +254,20 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint } f
             ) {
                 const midpoint = categoryScale.bandwidth() / 2;
                 selection
-                    .attr('x1', (d) => valueScale(d.min))
-                    .attr('x2', (d) => valueScale(d.max))
-                    .attr('y1', midpoint)
-                    .attr('y2', midpoint)
-                    .style('stroke-width', settings.strokeWidth)
-                    .style('stroke', settings.color)
-                    .classed('dimmed', (d) => shouldDimPoint(d));
+                    .transition(ChartManager.HandleTransition())
+                        .attr('x1', (d) => valueScale(d.min))
+                        .attr('x2', (d) => valueScale(d.max))
+                        .attr('y1', midpoint)
+                        .attr('y2', midpoint)
+                    .end()
+                    .then(() => {
+                        selection
+                            .transition(ChartManager.HandleTransition())
+                                .style('stroke-width', settings.strokeWidth)
+                                .style('stroke', settings.color);
+                        selection
+                            .classed('dimmed', (d) => shouldDimPoint(d));
+                    });
             }
 
         /**
@@ -279,11 +289,18 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint } f
                 const
                     midpoint = categoryScale.bandwidth() / 2;
                 selection
-                    .attr('cx', (d) => valueScale(d.highlighted ? d.highlightedValue : d.value))
-                    .attr('cy', midpoint)
-                    .attr('r', radius)
-                    .attr('fill', (d) => d.color)
-                    .classed('dimmed', (d) => shouldDimPoint(d));
+                    .transition(ChartManager.HandleTransition())
+                        .attr('cx', (d) => valueScale(d.highlighted ? d.highlightedValue : d.value))
+                        .attr('cy', midpoint)
+                    .end()
+                    .then(() => {
+                        selection
+                            .transition(ChartManager.HandleTransition())
+                                .attr('r', radius)
+                                .attr('fill', (d) => d.color);
+                        selection
+                            .classed('dimmed', (d) => shouldDimPoint(d));
+                    });
             }
 
         /**
@@ -301,12 +318,29 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint } f
                 shouldDimPoint: (dataPoint: VisualDataPoint) => boolean
             ) {
                 selection
-                    .attr('x', (d) => valueScale(d.value))
-                    .attr('y', 0)
-                    .attr('fill', (d) => d.color)
-                    .text((d) => d.name)
-                    .style('visibility', show ? 'visible' : 'hidden')
-                    .classed('dimmed', (d) => shouldDimPoint(d));
-            }        
+                    .transition(ChartManager.HandleTransition())
+                        .attr('x', (d) => valueScale(d.value))
+                        .attr('y', 0)
+                    .end()
+                    .then(() => {
+                        selection
+                            .transition(ChartManager.HandleTransition())
+                                .attr('fill', (d) => d.color)
+                                .text((d) => d.name)
+                                .style('visibility', show ? 'visible' : 'hidden');
+                        selection
+                            .classed('dimmed', (d) => shouldDimPoint(d));
+                    });
+            }
+
+        /**
+         * Generic handler for transition events when updating the DOM.
+         *
+         * @param duration  - time (in ms) for duration to take place
+         */
+            private static HandleTransition(duration: number = ChartManager.DefaultTransitionDuration) {
+                return d3Transition.transition()
+                    .duration(duration);
+            }
 
     }
