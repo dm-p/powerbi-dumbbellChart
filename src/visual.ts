@@ -37,6 +37,7 @@ import DataView = powerbi.DataView;
 import VisualObjectInstanceEnumerationObject = powerbi.VisualObjectInstanceEnumerationObject;
 import IVisualHost = powerbi.extensibility.visual.IVisualHost;
 import VisualUpdateType = powerbi.VisualUpdateType;
+import IVisualEventService = powerbi.extensibility.IVisualEventService;
 
 import { interactivitySelectionService, interactivityBaseService } from 'powerbi-visuals-utils-interactivityutils';
 import IInteractivityService = interactivityBaseService.IInteractivityService;
@@ -66,6 +67,8 @@ export class Visual implements IVisual {
         private behavior: BehaviorManager<SelectableDataPoint>;
     // Handling of tooltip display
         private tooltipServiceWrapper: ITooltipServiceWrapper;
+    // Visual events service
+        private events: IVisualEventService;
 
     constructor(options: VisualConstructorOptions) {
         console.log('Visual constructor', options);
@@ -79,11 +82,14 @@ export class Visual implements IVisual {
             this.host.tooltipService,
             this.target
         );
+        this.events = this.host.eventService;
     }
 
     public update(options: VisualUpdateOptions) {
         console.log('Visual update', options);
         try {
+            // Signal rendering has begun
+                this.events.renderingStarted(options);
             // Declare data view for re-use
                 const dataView = options && options.dataViews && options.dataViews[0];
             // Parse data view into settings
@@ -108,11 +114,13 @@ export class Visual implements IVisual {
             // Ensure our visual responds appropriately for the user if the data view isn't valid
                 if (!viewModel.isValid) {
                     chartManager.clear();
+                    // Signal rendering has finished
+                        this.events.renderingFinished(options);
                 } else {
                     // Ensure we've updated our viewmodel's axes based on any new viewport info
                         this.viewModelManager.updateAxes(options.viewport);
                     // Re-draw the chart
-                        chartManager.plot(viewModel);
+                        chartManager.plot(viewModel, this.events, options);
                     // Update interactivity/behavior
                         this.interactivity.bind(<IDumbbellBehaviorOptions<SelectableDataPoint>>{
                             behavior: this.behavior,
@@ -132,6 +140,8 @@ export class Visual implements IVisual {
                         );
                 }
         } catch(e) {
+            // Signal rendering failure
+                this.events.renderingFailed(options);
             // (For now) log error details and pause execution for debugging
                 console.log('Error!', e);
                 debugger;

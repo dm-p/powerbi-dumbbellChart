@@ -1,5 +1,7 @@
 import powerbi from 'powerbi-visuals-api';
 import IViewport = powerbi.IViewport;
+import IVisualEventService = powerbi.extensibility.IVisualEventService;
+import VisualUpdateOptions = powerbi.extensibility.VisualUpdateOptions;
 
 import * as d3Select from 'd3-selection';
 import * as d3Axis from 'd3-axis';
@@ -82,7 +84,7 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint } f
          * 
          * @param viewModel     - visual ViewModel
          */
-            plot(viewModel: IViewModel) {
+            plot(viewModel: IViewModel, events: IVisualEventService, options: VisualUpdateOptions) {
                 // Ensure our visual responds appropriately for the user if the data view isn't valid
                     if (!viewModel.isValid) {
                         // Clear down chart
@@ -100,7 +102,7 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint } f
                                         .tickSize(viewModel.valueAxis.tickSize)
                                 );
                         // Update data bindings on elements
-                            this.rebindCategories(viewModel);
+                            this.rebindCategories(viewModel, events, options);
                     }
             }
 
@@ -109,8 +111,9 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint } f
          * 
          * @param viewModel     - visual ViewModel
          */
-            private rebindCategories(viewModel: IViewModel) {
-                 const visualData = this.plotContainer
+            private rebindCategories(viewModel: IViewModel, events: IVisualEventService, options: VisualUpdateOptions) {
+                const transitions: Promise<void>[] = [];
+                const visualData = this.plotContainer
                     .selectAll('.category')
                         .data(viewModel.categories)
                         .join(
@@ -128,7 +131,8 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint } f
                                                 viewModel.categoryAxis.scale,
                                                 viewModel.valueAxis.scale,
                                                 viewModel.settings.connectingLines,
-                                                viewModel.shouldDimPoint
+                                                viewModel.shouldDimPoint,
+                                                transitions
                                             );
 
                                 // Add circles for data points
@@ -142,7 +146,8 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint } f
                                                 viewModel.categoryAxis.scale,
                                                 viewModel.valueAxis.scale,
                                                 viewModel.settings.dataPoints.radius,
-                                                viewModel.shouldDimPoint
+                                                viewModel.shouldDimPoint,
+                                                transitions
                                             );
 
                                 // Add data labels for first category
@@ -156,7 +161,8 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint } f
                                                 this.transformDataLabel,
                                                 viewModel.valueAxis.scale,
                                                 viewModel.settings.dataLabels.show,
-                                                viewModel.shouldDimPoint
+                                                viewModel.shouldDimPoint,
+                                                transitions
                                             );
 
                                 // Group element is used for any further operations
@@ -173,7 +179,8 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint } f
                                             viewModel.categoryAxis.scale,
                                             viewModel.valueAxis.scale,
                                             viewModel.settings.connectingLines,
-                                            viewModel.shouldDimPoint
+                                            viewModel.shouldDimPoint,
+                                            transitions
                                         );
                                 // Re-position circle coordinates
                                     update
@@ -186,7 +193,8 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint } f
                                                 viewModel.categoryAxis.scale,
                                                 viewModel.valueAxis.scale,
                                                 viewModel.settings.dataPoints.radius,
-                                                viewModel.shouldDimPoint
+                                                viewModel.shouldDimPoint,
+                                                transitions
                                             );
                                 // Re-position data labels
                                     update
@@ -199,7 +207,8 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint } f
                                                 this.transformDataLabel,
                                                 viewModel.valueAxis.scale,
                                                 viewModel.settings.dataLabels.show,
-                                                viewModel.shouldDimPoint
+                                                viewModel.shouldDimPoint,
+                                                transitions
                                             );
                                 // Group element is used for any further operations
                                     return update;
@@ -208,6 +217,11 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint } f
                                 exit.remove();
                             }
                         );
+                // Handle all promised transitions and then signal we've finished rendering
+                    Promise.all(transitions)
+                        .then(() => {
+                            events.renderingFinished(options);
+                        });
                 // Select the elements we require for category interactivity
                     this.categories = visualData.selectAll('.dumbbellLine');
                 // Select category axis labels and bind categories, for interactivity purposes
@@ -244,29 +258,33 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint } f
          * @param valueScale        - value scale object to use for plotting by measure value
          * @param settings          - parsed connecting line settings from dataView
          * @param shouldDimPoint    - helper method to apply styling for selection/highlighting
+         * @param transitions       - existing array of transitions to add any new ones to
          */
             private transformDumbbellLine(
                 selection: d3.Selection<SVGLineElement, ICategory, any, any>,
                 categoryScale: d3.ScaleBand<string>,
                 valueScale: d3.ScaleLinear<number, number>,
                 settings: ConnectingLineSettings,
-                shouldDimPoint: (dataPoint: VisualDataPoint) => boolean
+                shouldDimPoint: (dataPoint: VisualDataPoint) => boolean,
+                transitions: Promise<void>[]
             ) {
                 const midpoint = categoryScale.bandwidth() / 2;
                 selection
-                    .transition(ChartManager.HandleTransition())
-                        .attr('x1', (d) => valueScale(d.min))
-                        .attr('x2', (d) => valueScale(d.max))
-                        .attr('y1', midpoint)
-                        .attr('y2', midpoint)
-                    .end()
-                    .then(() => {
-                        selection
-                            .transition(ChartManager.HandleTransition())
-                                .style('stroke-width', settings.strokeWidth)
-                                .style('stroke', settings.color);
-                        selection
-                            .classed('dimmed', (d) => shouldDimPoint(d));
+                    .each((d, i, e) => {
+                        const element = d3Select.select(e[i]);
+                        transitions.push(
+                            element
+                                .classed('dimmed', shouldDimPoint(d))
+                                .transition(ChartManager.HandleTransition())
+                                    .attr('x1', valueScale(d.min))
+                                    .attr('x2', valueScale(d.max))
+                                    .attr('y1', midpoint)
+                                    .attr('y2', midpoint)
+                                .transition()
+                                    .style('stroke-width', settings.strokeWidth)
+                                    .style('stroke', settings.color)
+                                .end()
+                        );
                     });
             }
 
@@ -278,28 +296,32 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint } f
          * @param valueScale        - value scale object to use for plotting by measure value
          * @param radius            - circle radius, in px
          * @param shouldDimPoint    - helper method to apply styling for selection/highlighting
+         * @param transitions       - existing array of transitions to add any new ones to
          */
             private transformDumbbellCircle(
                 selection: d3.Selection<SVGCircleElement, IGroupDataPoint, any, any>,
                 categoryScale: d3.ScaleBand<string>,
                 valueScale: d3.ScaleLinear<number, number>,
                 radius: number,
-                shouldDimPoint: (dataPoint: VisualDataPoint) => boolean
+                shouldDimPoint: (dataPoint: VisualDataPoint) => boolean,
+                transitions: Promise<void>[]
             ) {
                 const
                     midpoint = categoryScale.bandwidth() / 2;
                 selection
-                    .transition(ChartManager.HandleTransition())
-                        .attr('cx', (d) => valueScale(d.highlighted ? d.highlightedValue : d.value))
-                        .attr('cy', midpoint)
-                    .end()
-                    .then(() => {
-                        selection
-                            .transition(ChartManager.HandleTransition())
-                                .attr('r', radius)
-                                .attr('fill', (d) => d.color);
-                        selection
-                            .classed('dimmed', (d) => shouldDimPoint(d));
+                    .each((d, i, e) => {
+                        const element = d3Select.select(e[i]);
+                        transitions.push(
+                            element
+                                .classed('dimmed', shouldDimPoint(d))
+                                .transition(ChartManager.HandleTransition())
+                                    .attr('cx', valueScale(d.highlighted ? d.highlightedValue : d.value))
+                                    .attr('cy', midpoint)
+                                .transition()
+                                    .attr('r', radius)
+                                    .attr('fill', d.color)
+                                .end()
+                        );
                     });
             }
 
@@ -310,26 +332,30 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint } f
          * @param valueScale        - value scale object to use for plotting by measure value
          * @param show              - whether to show labels or not
          * @param shouldDimPoint    - helper method to apply styling for selection/highlighting
+         * @param transitions       - existing array of transitions to add any new ones to
          */
             private transformDataLabel(
                 selection: d3.Selection<SVGTextElement, IGroupDataPoint, any, any>,
                 valueScale: d3.ScaleLinear<number, number>,
                 show: boolean,
-                shouldDimPoint: (dataPoint: VisualDataPoint) => boolean
+                shouldDimPoint: (dataPoint: VisualDataPoint) => boolean,
+                transitions: Promise<void>[]
             ) {
                 selection
-                    .transition(ChartManager.HandleTransition())
-                        .attr('x', (d) => valueScale(d.value))
-                        .attr('y', 0)
-                    .end()
-                    .then(() => {
-                        selection
-                            .transition(ChartManager.HandleTransition())
-                                .attr('fill', (d) => d.color)
-                                .text((d) => d.name)
-                                .style('visibility', show ? 'visible' : 'hidden');
-                        selection
-                            .classed('dimmed', (d) => shouldDimPoint(d));
+                    .each((d, i, e) => {
+                        const element = d3Select.select(e[i]);
+                        transitions.push(
+                            element
+                                .classed('dimmed', shouldDimPoint(d))
+                                .transition(ChartManager.HandleTransition())
+                                    .attr('x', valueScale(d.value))
+                                    .attr('y', 0)
+                                .transition()
+                                    .attr('fill', d.color)
+                                    .text(d.name)
+                                    .style('visibility', show ? 'visible' : 'hidden')
+                                .end()
+                        );
                     });
             }
 
