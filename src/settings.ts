@@ -30,14 +30,24 @@ import { dataViewObjectsParser } from 'powerbi-visuals-utils-dataviewutils';
 import DataViewObjectsParser = dataViewObjectsParser.DataViewObjectsParser;
 
 export class VisualSettings extends DataViewObjectsParser {
+    valueAxis = new ValueAxisSettings();
     dataPoints = new DataPointSettings();
     connectingLines = new ConnectingLineSettings();
     dataLabels = new DataLabelSettings();
 }
 
+export class ValueAxisSettings {
+    // Display units for axis values
+        displayUnits: number = 0;
+    // Number of decimal places to use for values
+        decimalPlaces: number = null;
+}
+
 export class DataPointSettings {
     // The size of the radius, in pixels
         radius: number = 5;
+    // Number format to use if not defined for measure or tooltip value
+        formatStringMissing: string = '#,##0.00';
 }
 
 export class ConnectingLineSettings {

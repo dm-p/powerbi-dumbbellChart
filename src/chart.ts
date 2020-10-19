@@ -99,6 +99,7 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint } f
                                 .call(
                                     d3Axis.axisBottom(viewModel.valueAxis.scale)
                                         .ticks(viewModel.valueAxis.tickCount)
+                                        .tickFormat((d) => viewModel.valueAxis.tickFormatter.format(d))
                                         .tickSize(viewModel.valueAxis.tickSize)
                                 );
                         // Update data bindings on elements
