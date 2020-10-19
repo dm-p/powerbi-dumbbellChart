@@ -8,6 +8,8 @@ import getFillColorByPropertyName = dataViewObject.getFillColorByPropertyName;
 import { interactivitySelectionService } from 'powerbi-visuals-utils-interactivityutils';
 import SelectableDataPoint = interactivitySelectionService.SelectableDataPoint;
 import VisualTooltipDataItem = powerbi.extensibility.VisualTooltipDataItem;
+import { valueFormatter } from 'powerbi-visuals-utils-formattingutils';
+import IValueFormatter = valueFormatter.IValueFormatter;
 
 import { VisualSettings } from './settings';
 
@@ -35,6 +37,8 @@ import * as d3Scale from 'd3-scale';
             tickCount: number;
         // Tick size (length of each gridline)
             tickSize: number;
+        // Formatter for axis tick values
+            tickFormatter: IValueFormatter;
     }
 
 /**
@@ -107,6 +111,10 @@ import * as d3Scale from 'd3-scale';
             color: string;
         // Default tooltip data
             tooltipData: VisualTooltipDataItem[];
+        // Formatted measure value
+            valueFormatted: string;
+        // Formatted highlight value (if applicable)
+            highlightedValueFormatted?: string;
     }
 
 /**
@@ -131,6 +139,8 @@ import * as d3Scale from 'd3-scale';
     export interface IViewModel {
         // Indicates that visual is safe to render
             isValid: boolean;
+        // Main measure's format string
+            primaryFormatString?: string;
         // Visual margin values
             margin: IMargin;
         // Distinct groups/series in the visual data
@@ -203,6 +213,9 @@ import * as d3Scale from 'd3-scale';
                 // Helper to look in the selection details for existence of selected status
                     const isSelected = (selectionId: ISelectionId): boolean => 
                             initalSelection?.find((dp) => selectionId.equals(<ISelectionId>dp.identity))?.selected;
+                // Get the primary measure's format string
+                    viewModel.primaryFormatString = dataView.metadata.columns
+                            .find((c) => c.roles.measure && !c.groupName)?.format ?? settings.dataPoints.formatStringMissing;
                 // Traverse the data view and map.
                 // For each category value, we can use its index to access its corresponding value in each array of values
                 // in each categorical.values grouping and bring it in.
@@ -244,8 +257,16 @@ import * as d3Scale from 'd3-scale';
                                     // Get current value. Similar to category, it needs to be type-cast. As we have restricted
                                     // valid data types in our data roles, we know it's safe to cast it to a number.
                                         const groupValue = <number>measure.values[ci];
+                                        const groupValueFormatted = valueFormatter.format(
+                                            groupValue,
+                                            viewModel.primaryFormatString
+                                        );
                                     // If our data is cross-highlighted, obtain the highlight value
                                         const pointHighlightedValue = pointHighlighted && <number>measure.highlights[ci];
+                                        const pointHighlightedValueFormatted = valueFormatter.format(
+                                            pointHighlightedValue,
+                                            viewModel.primaryFormatString
+                                        );
                                     // Set group min/max to measure value if it's at the extremes
                                         categoryMinValue = Math.min(categoryMinValue || groupValue, groupValue);
                                         categoryMaxValue = Math.max(categoryMaxValue || groupValue, groupValue);
@@ -263,7 +284,7 @@ import * as d3Scale from 'd3-scale';
                                             {
                                                 header: `${categoryName} - ${groupName}`,
                                                 displayName: measure.source.displayName,
-                                                value: `${groupValue}`,
+                                                value: `${groupValueFormatted}`,
                                                 color: color
                                             }
                                         ];
@@ -271,7 +292,7 @@ import * as d3Scale from 'd3-scale';
                                         if (pointHighlighted) {
                                             tooltipData.push({
                                                 displayName: 'Highlighted',
-                                                value: `${pointHighlightedValue}`,
+                                                value: `${pointHighlightedValueFormatted}`,
                                                 color: color,
                                                 opacity: '0'
                                             });
@@ -280,7 +301,10 @@ import * as d3Scale from 'd3-scale';
                                         tooltips.forEach((tt) => {
                                             tooltipData.push({
                                                 displayName: tt.source.displayName,
-                                                value: `${tt.values[ci]}`,
+                                                value: `${valueFormatter.format(
+                                                    tt.values[ci],
+                                                    tt.source.format ?? settings.dataPoints.formatStringMissing
+                                                )}`,
                                                 color: color,
                                                 opacity: '0'
                                             });
@@ -306,7 +330,9 @@ import * as d3Scale from 'd3-scale';
                                             groupSelectionId: groupSelectionId,
                                             dataPointSelectionId: dataPointSelectionId,
                                             value: groupValue,
+                                            valueFormatted: groupValueFormatted,
                                             highlightedValue: pointHighlightedValue,
+                                            highlightedValueFormatted: pointHighlightedValueFormatted,
                                             color: color,
                                             identity: dataPointSelectionId,
                                             selected: isSelected(dataPointSelectionId),
@@ -382,6 +408,12 @@ import * as d3Scale from 'd3-scale';
                     ];
                 // Tick count for value axis
                     const valueAxisTickCount = 3;
+                // Value axis tick formatter
+                    const valueAxisTickFormatter = valueFormatter.create({
+                        format: this.viewModel.primaryFormatString,
+                        value: this.viewModel.settings.valueAxis.displayUnits || this.viewModel.maxValue,
+                        precision: this.viewModel.settings.valueAxis.decimalPlaces
+                    });
                 // Set-up category axis
                     this.viewModel.categoryAxis = {
                         range: categoryAxisRange,
@@ -408,7 +440,8 @@ import * as d3Scale from 'd3-scale';
                             y: viewport.height - margin.bottom
                         },
                         tickCount: valueAxisTickCount,
-                        tickSize: - viewport.height - margin.top - margin.bottom
+                        tickSize: - viewport.height - margin.top - margin.bottom,
+                        tickFormatter: valueAxisTickFormatter
                     };
             }
 

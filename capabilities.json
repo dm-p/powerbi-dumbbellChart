@@ -30,6 +30,26 @@
         }
     ],
     "objects": {
+        "valueAxis": {
+            "displayName": "Measure Axis",
+            "properties": {
+                "displayUnits": {
+                    "displayName": "Display Units",
+                    "type": {
+                        "formatting": {
+                            "labelDisplayUnits": true
+                        }
+                    }
+                },
+                "decimalPlaces": {
+                    "displayName": "Value Decimal Places",
+                    "type": {
+                        "numeric": true
+                    },
+                    "placeHolderText": "Auto"
+                }
+            }
+        },
         "dataPoints": {
             "displayName": "Data Points",
             "properties": {
@@ -37,6 +57,12 @@
                     "displayName": "Radius",
                     "type": {
                         "numeric": true
+                    }
+                },
+                "formatStringMissing": {
+                    "displayName": "Format String (If Not Defined)",
+                    "type": {
+                        "text": true
                     }
                 },
                 "fillColor": {
