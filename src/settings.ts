@@ -29,11 +29,19 @@
 import { dataViewObjectsParser } from 'powerbi-visuals-utils-dataviewutils';
 import DataViewObjectsParser = dataViewObjectsParser.DataViewObjectsParser;
 
+import { AxisOrientation } from './viewModel';
+
 export class VisualSettings extends DataViewObjectsParser {
+    categoryAxis = new CategoryAxisSettings();
     valueAxis = new ValueAxisSettings();
     dataPoints = new DataPointSettings();
     connectingLines = new ConnectingLineSettings();
     dataLabels = new DataLabelSettings();
+}
+
+export class CategoryAxisSettings {
+    // Specifies orientation of the axis in the visual
+        orientation: AxisOrientation = 'left';
 }
 
 export class ValueAxisSettings {

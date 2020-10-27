@@ -16,6 +16,11 @@ import { VisualSettings } from './settings';
 import * as d3Scale from 'd3-scale';
 
 /**
+ * Used to specify the orientation of an axis (and give structure to capabilities/properties)
+ */
+    export type AxisOrientation = 'left' | 'bottom';
+
+/**
  * Shared axis properties.
  */
     interface IAxis {
@@ -387,6 +392,8 @@ import * as d3Scale from 'd3-scale';
          * @param viewport  - viewport (width/height) to constrain visual to
          */
             updateAxes(viewport: IViewport) {
+                // Chart orientation (from settings)
+                    const orientation = this.viewModel.settings.categoryAxis.orientation;
                 // Assign our margin values so we can re-use them more easily
                     this.viewModel.margin.bottom = 25;
                     this.viewModel.margin.left = 130;
@@ -398,14 +405,42 @@ import * as d3Scale from 'd3-scale';
                     const categoryAxisDomain = this.viewModel.categories.map((c) => c.name);
                 // Derived range for the value axis, based on margin values
                     const valueAxisRange: [number, number] = [
-                        margin.left,
-                        viewport.width - margin.right
+                        orientation === 'left'
+                            ?   margin.left
+                            :   viewport.height - margin.bottom,
+                        orientation === 'left'
+                            ?   viewport.width - margin.right
+                            :   margin.top
                     ];
+                    const valueAxisTranslate: ICoordinates = {
+                        x: orientation === 'left'
+                            ?   0
+                            :   margin.left,
+                        y: orientation === 'left'
+                            ?   viewport.height - margin.bottom
+                            :   0
+                    };
+                    const valueAxisTickSize =
+                        orientation === 'left'
+                            ?   - viewport.height - margin.top - margin.bottom
+                            :   - viewport.width - margin.right - margin.left;
                 // Derived range for the category axis, based on margin values
                     const categoryAxisRange: [number, number] = [
-                        margin.top,
-                        viewport.height - margin.bottom
+                        orientation === 'left'
+                            ?   margin.top
+                            :   margin.left,
+                        orientation === 'left'
+                            ?   viewport.height - margin.bottom
+                            :   viewport.width - margin.right
                     ];
+                    const categoryAxisTranslate: ICoordinates = {
+                        x: orientation === 'left'
+                            ?   margin.left
+                            :   0,
+                        y: orientation === 'left'
+                            ?   0
+                            :   viewport.height - margin.bottom
+                    };
                 // Tick count for value axis
                     const valueAxisTickCount = 3;
                 // Value axis tick formatter
@@ -422,10 +457,7 @@ import * as d3Scale from 'd3-scale';
                             .domain(categoryAxisDomain)
                             .range(categoryAxisRange)
                             .padding(0.2),
-                        translate: {
-                            x: margin.left,
-                            y: 0
-                        }
+                        translate: categoryAxisTranslate
                     };
                 // Set-up value axis
                     this.viewModel.valueAxis = {
@@ -435,12 +467,9 @@ import * as d3Scale from 'd3-scale';
                             .domain(valueAxisDomain)
                             .range(valueAxisRange)
                             .nice(valueAxisTickCount),
-                        translate: {
-                            x: 0,
-                            y: viewport.height - margin.bottom
-                        },
+                        translate: valueAxisTranslate,
                         tickCount: valueAxisTickCount,
-                        tickSize: - viewport.height - margin.top - margin.bottom,
+                        tickSize: valueAxisTickSize,
                         tickFormatter: valueAxisTickFormatter
                     };
             }
