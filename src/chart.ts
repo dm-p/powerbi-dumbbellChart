@@ -8,7 +8,7 @@ import * as d3Axis from 'd3-axis';
 import * as d3Transition from 'd3-transition';
 
 import { ConnectingLineSettings } from './settings';
-import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint } from './viewModel';
+import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint, AxisOrientation } from './viewModel';
 
     export class ChartManager {
 
@@ -16,6 +16,8 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint } f
             private static DefaultTransitionDuration = 500;
         // SVG element for the entire chart; will be a child of the main visual element
             private chartContainer: d3.Selection<SVGElement, any, any, any>;
+        // SVG group to abstract both axes
+            private axesContainer: d3.Selection<SVGElement, any, any, any>;
         // SVG group element to consolidate the category axis elements
             private categoryAxisContainer: d3.Selection<SVGElement, any, any, any>;
         // SVG group element to consolidate the value axis elements
@@ -42,18 +44,31 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint } f
                     this.clearCatcherContainer = this.chartContainer
                         .append('rect')
                             .classed('clearCatcher', true);
-                // Category & value axes, and plot container are all chldren of main chart container
-                    this.categoryAxisContainer = this.chartContainer
+                // Category & value axes, and plot container are all children of main chart container
+                    this.axesContainer = this.chartContainer
                         .append('g')
-                            .classed('categoryAxis', true)
-                            .classed('axis', true);
-                    this.valueAxisContainer = this.chartContainer
-                        .append('g')
-                            .classed('valueAxis', true)
-                            .classed('axis', true);
+                            .classed('axes', true);
+                    this.initialiseAxes();
                     this.plotContainer = this.chartContainer
                         .append('g')
                             .classed('plotArea', true);
+            }
+
+        /**
+         * Handle the teardown and setup of each axis container
+         */
+            private initialiseAxes() {
+                this.axesContainer
+                    .selectAll('*')
+                    .remove();
+                this.categoryAxisContainer = this.axesContainer
+                    .append('g')
+                    .classed('categoryAxis', true)
+                    .classed('axis', true);
+                this.valueAxisContainer = this.axesContainer
+                    .append('g')
+                    .classed('valueAxis', true)
+                    .classed('axis', true);
             }
 
         /**
@@ -91,13 +106,23 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint } f
                             this.clear();
                     } else {
                         // Call our axis functions in the appropriate containers
+                            this.initialiseAxes();
+                            const orientation = viewModel.settings.categoryAxis.orientation;
                             this.categoryAxisContainer
                                 .attr('transform', `translate(${viewModel.categoryAxis.translate.x}, ${viewModel.categoryAxis.translate.y})`)
-                                .call(d3Axis.axisLeft(viewModel.categoryAxis.scale));
+                                .call(
+                                    orientation === 'left'
+                                        ?   d3Axis.axisLeft(viewModel.categoryAxis.scale)
+                                        :   d3Axis.axisBottom(viewModel.categoryAxis.scale)
+                                );
                             this.valueAxisContainer
                                 .attr('transform', `translate(${viewModel.valueAxis.translate.x}, ${viewModel.valueAxis.translate.y})`)
                                 .call(
-                                    d3Axis.axisBottom(viewModel.valueAxis.scale)
+                                    (
+                                        orientation === 'left'
+                                            ?   d3Axis.axisBottom(viewModel.valueAxis.scale)
+                                            :   d3Axis.axisLeft(viewModel.valueAxis.scale)
+                                    )
                                         .ticks(viewModel.valueAxis.tickCount)
                                         .tickFormat((d) => viewModel.valueAxis.tickFormatter.format(d))
                                         .tickSize(viewModel.valueAxis.tickSize)
@@ -114,6 +139,7 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint } f
          */
             private rebindCategories(viewModel: IViewModel, events: IVisualEventService, options: VisualUpdateOptions) {
                 const transitions: Promise<void>[] = [];
+                const orientation = viewModel.settings.categoryAxis.orientation;
                 const visualData = this.plotContainer
                     .selectAll('.category')
                         .data(viewModel.categories)
@@ -122,7 +148,11 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint } f
                                 // Create grouping element
                                     const group = enter.append('g')
                                         .classed('category', true)
-                                        .call(this.transformCategoryGroup, viewModel.categoryAxis.scale);
+                                        .call(
+                                            this.transformCategoryGroup,
+                                            viewModel.categoryAxis.scale,
+                                            orientation
+                                        );
                                 // Add line
                                     group
                                         .append('line')
@@ -132,6 +162,7 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint } f
                                                 viewModel.categoryAxis.scale,
                                                 viewModel.valueAxis.scale,
                                                 viewModel.settings.connectingLines,
+                                                orientation,
                                                 viewModel.shouldDimPoint,
                                                 transitions
                                             );
@@ -147,6 +178,7 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint } f
                                                 viewModel.categoryAxis.scale,
                                                 viewModel.valueAxis.scale,
                                                 viewModel.settings.dataPoints.radius,
+                                                orientation,
                                                 viewModel.shouldDimPoint,
                                                 transitions
                                             );
@@ -160,7 +192,10 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint } f
                                             .classed('dataLabel', true)
                                             .call(
                                                 this.transformDataLabel,
+                                                viewModel.categoryAxis.scale,
                                                 viewModel.valueAxis.scale,
+                                                viewModel.settings.dataPoints.radius,
+                                                orientation,
                                                 viewModel.settings.dataLabels.show,
                                                 viewModel.shouldDimPoint,
                                                 transitions
@@ -171,7 +206,11 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint } f
                             },
                             update => {
                                 // Re-position groups
-                                    update.call(this.transformCategoryGroup, viewModel.categoryAxis.scale);
+                                    update.call(
+                                        this.transformCategoryGroup,
+                                        viewModel.categoryAxis.scale,
+                                        orientation
+                                    );
                                 // Re-position line coordinates
                                     update
                                         .select('.dumbbellLine')
@@ -180,6 +219,7 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint } f
                                             viewModel.categoryAxis.scale,
                                             viewModel.valueAxis.scale,
                                             viewModel.settings.connectingLines,
+                                            orientation,
                                             viewModel.shouldDimPoint,
                                             transitions
                                         );
@@ -194,6 +234,7 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint } f
                                                 viewModel.categoryAxis.scale,
                                                 viewModel.valueAxis.scale,
                                                 viewModel.settings.dataPoints.radius,
+                                                orientation,
                                                 viewModel.shouldDimPoint,
                                                 transitions
                                             );
@@ -206,7 +247,10 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint } f
                                             .classed('dataLabel', true)
                                             .call(
                                                 this.transformDataLabel,
+                                                viewModel.categoryAxis.scale,
                                                 viewModel.valueAxis.scale,
+                                                viewModel.settings.dataPoints.radius,
+                                                orientation,
                                                 viewModel.settings.dataLabels.show,
                                                 viewModel.shouldDimPoint,
                                                 transitions
@@ -242,13 +286,23 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint } f
          *
          * @param selection     - D3 selection (group) to apply transformation to
          * @param categoryScale - category scale object to use for positioning
+         * @param orientation   - orientation of category axis
          */
             private transformCategoryGroup(
                 selection: d3.Selection<SVGGElement, ICategory, any, any>,
-                categoryScale: d3.ScaleBand<string>
+                categoryScale: d3.ScaleBand<string>,
+                orientation: AxisOrientation
             ) {
                 selection
-                    .attr('transform', (d) => `translate(0, ${categoryScale(d.name)})`);
+                    .attr('transform', (d) => `translate(${
+                        orientation === 'left'
+                            ?   0
+                            :   categoryScale(d.name)
+                    }, ${
+                        orientation === 'left'
+                            ?   categoryScale(d.name)
+                            :   0
+                    })`);
             }
 
         /**
@@ -258,6 +312,7 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint } f
          * @param categoryScale     - category scale object to use for positioning
          * @param valueScale        - value scale object to use for plotting by measure value
          * @param settings          - parsed connecting line settings from dataView
+         * @param orientation       - orientation of category axis
          * @param shouldDimPoint    - helper method to apply styling for selection/highlighting
          * @param transitions       - existing array of transitions to add any new ones to
          */
@@ -266,6 +321,7 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint } f
                 categoryScale: d3.ScaleBand<string>,
                 valueScale: d3.ScaleLinear<number, number>,
                 settings: ConnectingLineSettings,
+                orientation: AxisOrientation,
                 shouldDimPoint: (dataPoint: VisualDataPoint) => boolean,
                 transitions: Promise<void>[]
             ) {
@@ -277,10 +333,22 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint } f
                             element
                                 .classed('dimmed', shouldDimPoint(d))
                                 .transition(ChartManager.HandleTransition())
-                                    .attr('x1', valueScale(d.min))
-                                    .attr('x2', valueScale(d.max))
-                                    .attr('y1', midpoint)
-                                    .attr('y2', midpoint)
+                                    .attr('x1', orientation === 'left'
+                                                ?   valueScale(d.min)
+                                                :   midpoint
+                                        )
+                                    .attr('x2', orientation === 'left'
+                                                ?   valueScale(d.max)
+                                                :   midpoint
+                                        )
+                                    .attr('y1', orientation === 'left'
+                                                ?   midpoint
+                                                :   valueScale(d.min)
+                                        )
+                                    .attr('y2', orientation === 'left'
+                                                ?   midpoint
+                                                :   valueScale(d.max)
+                                        )
                                 .transition()
                                     .style('stroke-width', settings.strokeWidth)
                                     .style('stroke', settings.color)
@@ -296,6 +364,7 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint } f
          * @param categoryScale     - category scale object to use for positioning
          * @param valueScale        - value scale object to use for plotting by measure value
          * @param radius            - circle radius, in px
+         * @param orientation       - orientation of category axis
          * @param shouldDimPoint    - helper method to apply styling for selection/highlighting
          * @param transitions       - existing array of transitions to add any new ones to
          */
@@ -304,6 +373,7 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint } f
                 categoryScale: d3.ScaleBand<string>,
                 valueScale: d3.ScaleLinear<number, number>,
                 radius: number,
+                orientation: AxisOrientation,
                 shouldDimPoint: (dataPoint: VisualDataPoint) => boolean,
                 transitions: Promise<void>[]
             ) {
@@ -316,8 +386,14 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint } f
                             element
                                 .classed('dimmed', shouldDimPoint(d))
                                 .transition(ChartManager.HandleTransition())
-                                    .attr('cx', valueScale(d.highlighted ? d.highlightedValue : d.value))
-                                    .attr('cy', midpoint)
+                                    .attr('cx', orientation === 'left'
+                                                ?   valueScale(d.highlighted ? d.highlightedValue : d.value)
+                                                :   midpoint
+                                        )
+                                    .attr('cy', orientation === 'left'
+                                                ?   midpoint
+                                                :   valueScale(d.highlighted ? d.highlightedValue : d.value)
+                                        )
                                 .transition()
                                     .attr('r', radius)
                                     .attr('fill', d.color)
@@ -330,18 +406,25 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint } f
          * Consolidates logic to handle positioning and attributes of the data label text elements within a category
          *
          * @param selection         - D3 selection (circle) to apply transformation to
+         * @param categoryScale     - category scale object to use for positioning
          * @param valueScale        - value scale object to use for plotting by measure value
+         * @param radius            - circle radius, in px
+         * @param orientation       - orientation of category axis
          * @param show              - whether to show labels or not
          * @param shouldDimPoint    - helper method to apply styling for selection/highlighting
          * @param transitions       - existing array of transitions to add any new ones to
          */
             private transformDataLabel(
                 selection: d3.Selection<SVGTextElement, IGroupDataPoint, any, any>,
+                categoryScale: d3.ScaleBand<string>,
                 valueScale: d3.ScaleLinear<number, number>,
+                radius: number,
+                orientation: AxisOrientation,
                 show: boolean,
                 shouldDimPoint: (dataPoint: VisualDataPoint) => boolean,
                 transitions: Promise<void>[]
             ) {
+                const midpoint = categoryScale.bandwidth() / 2;
                 selection
                     .each((d, i, e) => {
                         const element = d3Select.select(e[i]);
@@ -349,9 +432,23 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint } f
                             element
                                 .classed('dimmed', shouldDimPoint(d))
                                 .transition(ChartManager.HandleTransition())
-                                    .attr('x', valueScale(d.value))
-                                    .attr('y', 0)
+                                    .attr('x', orientation === 'left'
+                                                ?   valueScale(d.value)
+                                                :   midpoint + radius
+                                        )
+                                    .attr('y', orientation === 'left'
+                                                ?   midpoint - radius
+                                                :   valueScale(d.value)
+                                        )
                                 .transition()
+                                    .attr('text-anchor', orientation === 'left'
+                                                ?   'middle'
+                                                :   'start'
+                                        )
+                                    .attr('dominant-baseline', orientation === 'left'
+                                                ?   'text-after-edge'
+                                                :   'central'
+                                        )
                                     .attr('fill', d.color)
                                     .text(d.name)
                                     .style('visibility', show ? 'visible' : 'hidden')

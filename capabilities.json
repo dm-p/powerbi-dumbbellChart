@@ -30,6 +30,26 @@
         }
     ],
     "objects": {
+        "categoryAxis": {
+            "displayName": "Category Axis",
+            "properties": {
+                "orientation": {
+                    "displayName": "Orientation",
+                    "type": {
+                        "enumeration": [
+                            {
+                                "displayName": "Left",
+                                "value": "left"
+                            },
+                            {
+                                "displayName": "Bottom",
+                                "value": "bottom"
+                            }
+                        ]
+                    }
+                }
+            }
+        },
         "valueAxis": {
             "displayName": "Measure Axis",
             "properties": {
