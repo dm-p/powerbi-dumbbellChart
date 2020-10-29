@@ -170,7 +170,40 @@ export class Visual implements IVisual {
             console.log(`Object: ${options.objectName}`);
         // Based on which object we're working with, handle the instances accordingly
             switch (options.objectName) {
+                case 'categoryAxis': {
+                    // Add valid ranges for categoryAxis
+                        objects.instances[0].validValues = {
+                            innerPadding: {
+                                numberRange: {
+                                    min: 0,
+                                    max: 50
+                                }
+                            }
+                        }
+                    break;
+                }
+                case 'valueAxis': {
+                    // Add valid ranges for valueAxis
+                        objects.instances[0].validValues = {
+                            decimalPlaces: {
+                                numberRange: {
+                                    min: 0,
+                                    max: 5
+                                }
+                            }
+                        }
+                    break;
+                }
                 case 'dataPoints': {
+                    // Add valid ranges for data points
+                        objects.instances[0].validValues = {
+                            radius: {
+                                numberRange: {
+                                    min: 2,
+                                    max: 10
+                                }
+                            }
+                        }
                     // Create a new instance for each group/series and add data-bound properties
                         this.viewModelManager.viewModel.groups.forEach((g) => {
                             objects.instances.push({
