@@ -39,12 +39,23 @@ export class VisualSettings extends DataViewObjectsParser {
     dataLabels = new DataLabelSettings();
 }
 
-export class CategoryAxisSettings {
-    // Specifies orientation of the axis in the visual
-        orientation: AxisOrientation = 'left';
+export class AxisSettings {
+    // Tick label color
+        color: string = '#605E5C';
+    // Tick label font size
+        fontSize: number = 9;
+    // Tick label font family
+        fontFamily: string = '"Segoe UI", wf_segoe-ui_normal, helvetica, arial, sans-serif';
 }
 
-export class ValueAxisSettings {
+export class CategoryAxisSettings extends AxisSettings {
+    // Specifies orientation of the axis in the visual
+        orientation: AxisOrientation = 'left';
+    // Inner padding between categories
+        innerPadding: number = 20;
+}
+
+export class ValueAxisSettings extends AxisSettings {
     // Display units for axis values
         displayUnits: number = 0;
     // Number of decimal places to use for values
