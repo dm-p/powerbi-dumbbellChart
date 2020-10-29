@@ -8,8 +8,9 @@ import getFillColorByPropertyName = dataViewObject.getFillColorByPropertyName;
 import { interactivitySelectionService } from 'powerbi-visuals-utils-interactivityutils';
 import SelectableDataPoint = interactivitySelectionService.SelectableDataPoint;
 import VisualTooltipDataItem = powerbi.extensibility.VisualTooltipDataItem;
-import { valueFormatter } from 'powerbi-visuals-utils-formattingutils';
+import { valueFormatter, textMeasurementService, interfaces } from 'powerbi-visuals-utils-formattingutils';
 import IValueFormatter = valueFormatter.IValueFormatter;
+import TextProperties = interfaces.TextProperties;
 
 import { VisualSettings } from './settings';
 
@@ -28,6 +29,10 @@ import * as d3Scale from 'd3-scale';
             range: [number, number];
         // X/Y coordinates for SVG translation of enclosing group
             translate: ICoordinates;
+        // Tick text properties
+            tickTextProperties: TextProperties;
+        // Largest measured tick label height & width
+            tickLabelDimensions: IViewport;
     }
 
 /**
@@ -181,6 +186,8 @@ import * as d3Scale from 'd3-scale';
             viewModel: IViewModel = this.getNewViewModel();
         // Visual host services
             private host: IVisualHost;
+        // Generic margin padding
+            private static MarginPad = 15;
 
             constructor(host: IVisualHost) {
                 this.host = host;
@@ -394,13 +401,39 @@ import * as d3Scale from 'd3-scale';
             updateAxes(viewport: IViewport) {
                 // Chart orientation (from settings)
                     const orientation = this.viewModel.settings.categoryAxis.orientation;
-                // Assign our margin values so we can re-use them more easily
-                    this.viewModel.margin.bottom = 25;
-                    this.viewModel.margin.left = 130;
-                    this.viewModel.margin.right = 30;
-                    const margin = this.viewModel.margin;
+                // Value axis tick formatter
+                    const valueAxisTickFormatter = valueFormatter.create({
+                        format: this.viewModel.primaryFormatString,
+                        value: this.viewModel.settings.valueAxis.displayUnits || this.viewModel.maxValue,
+                        precision: this.viewModel.settings.valueAxis.decimalPlaces
+                    });
                 // Value axis domain (min/max)
                     const valueAxisDomain: [number, number] = [this.viewModel.minValue, this.viewModel.maxValue];
+                // Value axis text properties
+                    const valueAxisTickTextProperties: TextProperties = {
+                        fontFamily: this.viewModel.settings.valueAxis.fontFamily,
+                        fontSize: `${this.viewModel.settings.valueAxis.fontSize}pt`
+                    };
+                    const valueTickLabelDimensions = this.getValueTickLabelDimensions(
+                        valueAxisTickTextProperties,
+                        valueAxisTickFormatter,
+                        valueAxisDomain
+                    );
+                // Category axis axis text properties
+                    const categoryAxisTickTextProperties: TextProperties = {
+                        fontFamily: this.viewModel.settings.categoryAxis.fontFamily,
+                        fontSize: `${this.viewModel.settings.categoryAxis.fontSize}pt`
+                    };
+                    const categoryTickLabelDimensions = this.getCategoryTickLabelDimensions(
+                        categoryAxisTickTextProperties
+                    );
+                // Assign our margin values so we can re-use them more easily
+                    const margin =
+                            this.viewModel.margin =
+                            this.calculateMargins(
+                                categoryTickLabelDimensions,
+                                valueTickLabelDimensions
+                            );
                 // Category axis domain (unique values)
                     const categoryAxisDomain = this.viewModel.categories.map((c) => c.name);
                 // Derived range for the value axis, based on margin values
@@ -443,12 +476,6 @@ import * as d3Scale from 'd3-scale';
                     };
                 // Tick count for value axis
                     const valueAxisTickCount = 3;
-                // Value axis tick formatter
-                    const valueAxisTickFormatter = valueFormatter.create({
-                        format: this.viewModel.primaryFormatString,
-                        value: this.viewModel.settings.valueAxis.displayUnits || this.viewModel.maxValue,
-                        precision: this.viewModel.settings.valueAxis.decimalPlaces
-                    });
                 // Set-up category axis
                     this.viewModel.categoryAxis = {
                         range: categoryAxisRange,
@@ -456,8 +483,10 @@ import * as d3Scale from 'd3-scale';
                         scale: d3Scale.scaleBand()
                             .domain(categoryAxisDomain)
                             .range(categoryAxisRange)
-                            .padding(0.2),
-                        translate: categoryAxisTranslate
+                            .padding(this.viewModel.settings.categoryAxis.innerPadding / 100),
+                        translate: categoryAxisTranslate,
+                        tickTextProperties: categoryAxisTickTextProperties,
+                        tickLabelDimensions: categoryTickLabelDimensions
                     };
                 // Set-up value axis
                     this.viewModel.valueAxis = {
@@ -470,7 +499,9 @@ import * as d3Scale from 'd3-scale';
                         translate: valueAxisTranslate,
                         tickCount: valueAxisTickCount,
                         tickSize: valueAxisTickSize,
-                        tickFormatter: valueAxisTickFormatter
+                        tickFormatter: valueAxisTickFormatter,
+                        tickTextProperties: valueAxisTickTextProperties,
+                        tickLabelDimensions: valueTickLabelDimensions
                     };
             }
 
@@ -482,12 +513,7 @@ import * as d3Scale from 'd3-scale';
             private getNewViewModel(settings?: VisualSettings): IViewModel {
                 return {
                     isValid: false,
-                    margin: {
-                        top: 10,
-                        right: 10,
-                        bottom: 10,
-                        left: 10
-                    },
+                    margin: this.calculateMargins(),
                     categories: [],
                     groups: [],
                     settings: settings,
@@ -532,4 +558,86 @@ import * as d3Scale from 'd3-scale';
                 }
                 return false;
             }
+
+        /**
+         * Calculate the largest tick label for the category axis, based on the font and number format
+         *
+         * @param textProperties    - axis font/text properties
+         */
+            private getCategoryTickLabelDimensions(
+                textProperties: TextProperties
+            ): IViewport {
+                let maxHeight = 0,
+                    maxWidth = 0;
+                this.viewModel.categories.forEach((c) => {
+                    const
+                        height = textMeasurementService.measureSvgTextHeight(textProperties, c.name),
+                        width = textMeasurementService.measureSvgTextWidth(textProperties, c.name);
+                    maxHeight = Math.max(height, maxHeight);
+                    maxWidth = Math.max(width, maxWidth);
+                });
+                return {
+                    height: maxHeight,
+                    width: maxWidth
+                };
+            }
+
+        /**
+         * Calculate the largest tick label for the value axis, based on the font and number format.
+         *
+         * @param textProperties    - axis font/text properties
+         * @param domain            - axis domain values
+         * @param formatter         - axis number formatter
+         */
+            private getValueTickLabelDimensions(
+                textProperties: TextProperties,
+                formatter: IValueFormatter,
+                domain: [number, number]
+            ): IViewport {
+                let maxHeight = 0,
+                    maxWidth = 0;
+                domain.forEach((d) => {
+                    const
+                        height = textMeasurementService.measureSvgTextHeight(textProperties, formatter.format(d)),
+                        width = textMeasurementService.measureSvgTextWidth(textProperties, formatter.format(d))
+                    maxHeight = Math.max(height, maxHeight);
+                    maxWidth = Math.max(width, maxWidth);
+                });
+                return {
+                    height: maxHeight,
+                    width: maxWidth
+                };                
+            }
+
+        /**
+         * Calculate the visual margins, accounting for calculated tick label dimensions (if available).
+         *
+         * @param categoryTickLabelDimensions   - calculated largest category axis tick label dimensions
+         * @param valueTickLabelDimensions      - calculated largest value axis tick label dimensions
+         */
+            private calculateMargins(
+                categoryTickLabelDimensions?: IViewport,
+                valueTickLabelDimensions?: IViewport
+            ): IMargin {
+                let margin: IMargin = {
+                    top: ViewModelManager.MarginPad,
+                    right: ViewModelManager.MarginPad,
+                    bottom: ViewModelManager.MarginPad,
+                    left: ViewModelManager.MarginPad
+                };
+                if (categoryTickLabelDimensions && valueTickLabelDimensions) {
+                    const orientation = this.viewModel.settings.categoryAxis.orientation;
+                    margin.bottom += orientation === 'left'
+                        ?   valueTickLabelDimensions.height
+                        :   categoryTickLabelDimensions.height;
+                    margin.left += orientation === 'left'
+                        ?   categoryTickLabelDimensions.width
+                        :   valueTickLabelDimensions.width;
+                    margin.right += orientation === 'left'
+                        ?   valueTickLabelDimensions.width / 2
+                        :   0;
+                }
+                return margin;
+            }
+
     }

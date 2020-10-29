@@ -2,12 +2,13 @@ import powerbi from 'powerbi-visuals-api';
 import IViewport = powerbi.IViewport;
 import IVisualEventService = powerbi.extensibility.IVisualEventService;
 import VisualUpdateOptions = powerbi.extensibility.VisualUpdateOptions;
+import { textMeasurementService } from 'powerbi-visuals-utils-formattingutils';
 
 import * as d3Select from 'd3-selection';
 import * as d3Axis from 'd3-axis';
 import * as d3Transition from 'd3-transition';
 
-import { ConnectingLineSettings } from './settings';
+import { ConnectingLineSettings, AxisSettings } from './settings';
 import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint, AxisOrientation } from './viewModel';
 
     export class ChartManager {
@@ -114,6 +115,10 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint, Ax
                                     orientation === 'left'
                                         ?   d3Axis.axisLeft(viewModel.categoryAxis.scale)
                                         :   d3Axis.axisBottom(viewModel.categoryAxis.scale)
+                                )
+                                .call(
+                                    this.transformAxisLabelFont,
+                                    viewModel.settings.categoryAxis
                                 );
                             this.valueAxisContainer
                                 .attr('transform', `translate(${viewModel.valueAxis.translate.x}, ${viewModel.valueAxis.translate.y})`)
@@ -126,6 +131,10 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint, Ax
                                         .ticks(viewModel.valueAxis.tickCount)
                                         .tickFormat((d) => viewModel.valueAxis.tickFormatter.format(d))
                                         .tickSize(viewModel.valueAxis.tickSize)
+                                )
+                                .call(
+                                    this.transformAxisLabelFont,
+                                    viewModel.settings.valueAxis
                                 );
                         // Update data bindings on elements
                             this.rebindCategories(viewModel, events, options);
@@ -272,13 +281,52 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint, Ax
                 // Select category axis labels and bind categories, for interactivity purposes
                     this.categoryLabels = this.categoryAxisContainer
                         .selectAll('.tick text');
-                    this.categoryLabels
-                        .datum((d, di) => viewModel.categories[di])
-                        .classed('emphasized', (d) => viewModel.shouldEmphasizePoint(d));
+                    this.bindCategoryAxisTickLabels(viewModel);
                 // Get our selection of points for interactivity purposes
                     this.points = visualData.selectAll('.dumbbellPoint');
                 // Get our selection of data labels for interactivity purposes
                     this.dataLabels = visualData.selectAll('.dataLabel');
+            }
+
+        /**
+         * Bind category data from the ViewModel to the category axis ticks and apply tailoring.
+         *
+         * @param viewModel     - visual ViewModel
+         */
+            private bindCategoryAxisTickLabels(viewModel: IViewModel) {
+                const orientation = viewModel.settings.categoryAxis.orientation;
+                let textProperties = viewModel.categoryAxis.tickTextProperties;
+                this.categoryLabels
+                    .datum((d, di) => viewModel.categories[di])
+                        .text((d) => {
+                            textProperties.text = d.name;
+                            return orientation === 'left'
+                                ?   d.name
+                                :   textMeasurementService.getTailoredTextOrDefault(
+                                        textProperties,
+                                        viewModel.categoryAxis.scale.bandwidth()
+                                    );
+                        })
+                        .classed('emphasized', (d) => viewModel.shouldEmphasizePoint(d))
+                    .append('title')
+                        .text((d) => d.name);
+            }
+
+        /**
+         * Consolidates logic to handle styling for tick labels based on visual properties
+         *
+         * @param selection     - D3 selection (group) to apply transformation to
+         * @param settings      - axis settings
+         */
+            private transformAxisLabelFont(
+                selection: d3.Selection<SVGElement, any, any, any>,
+                settings: AxisSettings
+            ) {
+                selection
+                    .selectAll('.tick text')
+                        .style('font-family', settings.fontFamily)
+                        .style('font-size', `${settings.fontSize}pt`)
+                        .attr('fill', settings.color);
             }
 
         /**
