@@ -122,7 +122,7 @@
                 "decimalPlaces": {
                     "displayName": "Value Decimal Places",
                     "type": {
-                        "numeric": true
+                        "integer": true
                     },
                     "placeHolderText": "Auto"
                 }
@@ -134,7 +134,7 @@
                 "radius": {
                     "displayName": "Radius",
                     "type": {
-                        "numeric": true
+                        "integer": true
                     }
                 },
                 "formatStringMissing": {
