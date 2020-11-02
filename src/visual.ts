@@ -180,6 +180,10 @@ export class Visual implements IVisual {
                                 }
                             }
                         }
+                    // Remove inner padding if using left orientation
+                        if (this.settings.categoryAxis.orientation === 'left') {
+                            delete objects.instances[0].properties.innerPadding;
+                        }
                     break;
                 }
                 case 'valueAxis': {
