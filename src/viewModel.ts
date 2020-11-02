@@ -483,7 +483,10 @@ import * as d3Scale from 'd3-scale';
                         scale: d3Scale.scaleBand()
                             .domain(categoryAxisDomain)
                             .range(categoryAxisRange)
-                            .padding(this.viewModel.settings.categoryAxis.innerPadding / 100),
+                            .padding(orientation === 'left'
+                                ?   0
+                                :   this.viewModel.settings.categoryAxis.innerPadding / 100
+                            ),
                         translate: categoryAxisTranslate,
                         tickTextProperties: categoryAxisTickTextProperties,
                         tickLabelDimensions: categoryTickLabelDimensions
