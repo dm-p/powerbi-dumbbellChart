@@ -1,0 +1,14 @@
+{
+    "Role_Category": "Category",
+    "Role_Series": "Series",
+    "Role_Measure": "Measure",
+    "Role_Tooltips": "Tooltips",
+    "Object_CategoryAxis": "Category Axis",
+    "Property_Orientation": "Orientation",
+    "Property_InnerPadding": "Inner Padding",
+    "Property_Color": "Color",
+    "Property_FontSize": "Font Size",
+    "Property_FontFamily": "Font Family",
+    "Enum_Left": "Left",
+    "Enum_Bottom": "Bottom"
+}

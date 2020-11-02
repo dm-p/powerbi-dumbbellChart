@@ -1,0 +1,14 @@
+{
+    "Role_Category": "Catégorie",
+    "Role_Series": "Série",
+    "Role_Measure": "Valeur",
+    "Role_Tooltips": "Info-Bulles",
+    "Object_CategoryAxis": "Axe des Catégories",
+    "Property_Orientation": "Orientation",
+    "Property_InnerPadding": "Remplissage Interne",
+    "Property_Color": "Couleur",
+    "Property_FontSize": "Taille du Texte",
+    "Property_FontFamily": "Famille de Polices",
+    "Enum_Left": "Gauche",
+    "Enum_Bottom": "Bas"
+}

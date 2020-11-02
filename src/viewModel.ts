@@ -271,13 +271,17 @@ import * as d3Scale from 'd3-scale';
                                         const groupValue = <number>measure.values[ci];
                                         const groupValueFormatted = valueFormatter.format(
                                             groupValue,
-                                            viewModel.primaryFormatString
+                                            viewModel.primaryFormatString,
+                                            undefined,
+                                            this.host.locale
                                         );
                                     // If our data is cross-highlighted, obtain the highlight value
                                         const pointHighlightedValue = pointHighlighted && <number>measure.highlights[ci];
                                         const pointHighlightedValueFormatted = valueFormatter.format(
                                             pointHighlightedValue,
-                                            viewModel.primaryFormatString
+                                            viewModel.primaryFormatString,
+                                            undefined,
+                                            this.host.locale
                                         );
                                     // Set group min/max to measure value if it's at the extremes
                                         categoryMinValue = Math.min(categoryMinValue || groupValue, groupValue);
@@ -315,7 +319,9 @@ import * as d3Scale from 'd3-scale';
                                                 displayName: tt.source.displayName,
                                                 value: `${valueFormatter.format(
                                                     tt.values[ci],
-                                                    tt.source.format ?? settings.dataPoints.formatStringMissing
+                                                    tt.source.format ?? settings.dataPoints.formatStringMissing,
+                                                    undefined,
+                                                    this.host.locale
                                                 )}`,
                                                 color: color,
                                                 opacity: '0'
@@ -405,7 +411,8 @@ import * as d3Scale from 'd3-scale';
                     const valueAxisTickFormatter = valueFormatter.create({
                         format: this.viewModel.primaryFormatString,
                         value: this.viewModel.settings.valueAxis.displayUnits || this.viewModel.maxValue,
-                        precision: this.viewModel.settings.valueAxis.decimalPlaces
+                        precision: this.viewModel.settings.valueAxis.decimalPlaces,
+                        cultureSelector: this.host.locale
                     });
                 // Value axis domain (min/max)
                     const valueAxisDomain: [number, number] = [this.viewModel.minValue, this.viewModel.maxValue];

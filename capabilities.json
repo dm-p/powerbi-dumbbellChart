@@ -2,16 +2,19 @@
     "dataRoles": [
         {
             "displayName": "Category",
+            "displayNameKey": "Role_Category",
             "name": "category",
             "kind": "Grouping"
         },
         {
             "displayName": "Series",
+            "displayNameKey": "Role_Series",
             "name": "series",
             "kind": "Grouping"
         },
         {
             "displayName": "Measure",
+            "displayNameKey": "Role_Measure",
             "name": "measure",
             "kind": "Measure",
             "requiredTypes": [
@@ -25,6 +28,7 @@
         },
         {
             "displayName": "Tooltips",
+            "displayNameKey": "Role_Tooltips",
             "name": "tooltips",
             "kind": "Measure"
         }
@@ -32,30 +36,36 @@
     "objects": {
         "categoryAxis": {
             "displayName": "Category Axis",
+            "displayNameKey": "Object_CategoryAxis",
             "properties": {
                 "orientation": {
                     "displayName": "Orientation",
+                    "displayNameKey": "Property_Orientation",
                     "type": {
                         "enumeration": [
                             {
                                 "displayName": "Left",
-                                "value": "left"
+                                "value": "left",
+                                "displayNameKey": "Enum_Left"
                             },
                             {
                                 "displayName": "Bottom",
-                                "value": "bottom"
+                                "value": "bottom",
+                                "displayNameKey": "Enum_Bottom"
                             }
                         ]
                     }
                 },
                 "innerPadding": {
                     "displayName": "Inner Padding",
+                    "displayNameKey": "Property_InnerPadding",
                     "type": {
                         "integer": true
                     }
                 },
                 "color": {
                     "displayName": "Color",
+                    "displayNameKey": "Property_Color",
                     "type": {
                         "fill": {
                             "solid": {
@@ -66,6 +76,7 @@
                 },
                 "fontSize": {
                     "displayName": "Text Size",
+                    "displayNameKey": "Property_FontSize",
                     "type": {
                         "formatting": {
                             "fontSize": true
@@ -74,6 +85,7 @@
                 },
                 "fontFamily": {
                     "displayName": "Font Family",
+                    "displayNameKey": "Property_FontFamily",
                     "type": {
                         "formatting": {
                             "fontFamily": true
