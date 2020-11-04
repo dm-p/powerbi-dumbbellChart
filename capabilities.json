@@ -258,5 +258,6 @@
     },
     "sorting": {
         "default": { }
-    }
+    },
+    "supportsLandingPage": true
 }

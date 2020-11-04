@@ -10,5 +10,8 @@
     "Property_FontSize": "Taille du Texte",
     "Property_FontFamily": "Famille de Polices",
     "Enum_Left": "Gauche",
-    "Enum_Bottom": "Bas"
+    "Enum_Bottom": "Bas",
+    "Landing_Heading": "Bonjour!",
+    "Landing_Overview": "Veuillez choisir des colonnes ou des mesures appropriées pour les champs Catégorie, Série et Mesure.",
+    "Landing_Help": "En savoir plus sur Power BI"
 }

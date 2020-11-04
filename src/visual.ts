@@ -75,7 +75,7 @@ export class Visual implements IVisual {
         this.target = options.element;
         this.host = options.host;
         this.viewModelManager = new ViewModelManager(this.host);
-        this.domManager = new DomManager(this.target);
+        this.domManager = new DomManager(this.target, this.host);
         this.interactivity = interactivitySelectionService.createInteractivitySelectionService(this.host);
         this.behavior = new BehaviorManager();
         this.tooltipServiceWrapper = createTooltipServiceWrapper(
@@ -106,7 +106,9 @@ export class Visual implements IVisual {
                 }
             // More convenient access to viewModel
                 const viewModel = this.viewModelManager.viewModel;
-            // More conventient access to DOM Manager's Chart Manager instance
+            // Handle landing page status and display
+                this.domManager.landingPageManager.handleDisplay(viewModel.isValid);
+            // More convenient access to DOM Manager's Chart Manager instance
                 const chartManager = this.domManager.chartManager;
             // The options.viewport object gives us the current visual's size, so we can assign this to
             // our chart container to allow it to grow and shrink.
