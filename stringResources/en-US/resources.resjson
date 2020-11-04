@@ -10,5 +10,8 @@
     "Property_FontSize": "Font Size",
     "Property_FontFamily": "Font Family",
     "Enum_Left": "Left",
-    "Enum_Bottom": "Bottom"
+    "Enum_Bottom": "Bottom",
+    "Landing_Heading": "Welcome!",
+    "Landing_Overview": "Please choose suitable columns or measures for the Category, Series and Measure fields.",
+    "Landing_Help": "Learn more about Power BI!"
 }
