@@ -124,16 +124,18 @@ export class Visual implements IVisual {
                     // Re-draw the chart
                         chartManager.plot(viewModel, this.events, options);
                     // Update interactivity/behavior
-                        this.interactivity.bind(<IDumbbellBehaviorOptions<SelectableDataPoint>>{
-                            behavior: this.behavior,
-                            dataPoints: this.viewModelManager.getSelectableDataPoints(),
-                            categorySelection: chartManager.categories,
-                            categoryLabelSelection: chartManager.categoryLabels,
-                            pointSelection: chartManager.points,
-                            dataLabelSelection: chartManager.dataLabels,
-                            clearCatcherSelection: chartManager.clearCatcherContainer,
-                            viewModel: this.viewModelManager.viewModel
-                        });
+                        if (this.host.allowInteractions) {
+                            this.interactivity.bind(<IDumbbellBehaviorOptions<SelectableDataPoint>>{
+                                behavior: this.behavior,
+                                dataPoints: this.viewModelManager.getSelectableDataPoints(),
+                                categorySelection: chartManager.categories,
+                                categoryLabelSelection: chartManager.categoryLabels,
+                                pointSelection: chartManager.points,
+                                dataLabelSelection: chartManager.dataLabels,
+                                clearCatcherSelection: chartManager.clearCatcherContainer,
+                                viewModel: this.viewModelManager.viewModel
+                            });
+                        }
                     // Bind tooltip display
                         this.tooltipServiceWrapper.addTooltip(
                             chartManager.points,
