@@ -1,1 +1,25 @@
-{"visual":{"name":"dumbbellChart","displayName":"dumbbellChart","guid":"dumbbellChartFCE0F80F94D447908C89DC6586BAB223","visualClassName":"Visual","version":"1.0.0","description":"","supportUrl":"","gitHubUrl":""},"apiVersion":"2.6.0","author":{"name":"","email":""},"assets":{"icon":"assets/icon.png"},"externalJS":null,"style":"style/visual.less","capabilities":"capabilities.json","dependencies":null,"stringResources":[]}
+{
+    "visual": {
+        "name": "dumbbellChart",
+        "displayName": "Dumbbell Chart",
+        "guid": "dumbbellChartFCE0F80F94D447908C89DC6586BAB223",
+        "visualClassName": "Visual",
+        "version": "1.0.0",
+        "description": "Compare changes between multiple categories and series on the same axis.",
+        "supportUrl": "https://github.com/dm-p/powerbi-dumbbellChart",
+        "gitHubUrl": ""
+    },
+    "apiVersion": "2.6.0",
+    "author": {
+        "name": "Daniel Marsh-Patrick",
+        "email": "daniel@coacervo.co"
+    },
+    "assets": {
+        "icon": "assets/icon.png"
+    },
+    "externalJS": null,
+    "style": "style/visual.less",
+    "capabilities": "capabilities.json",
+    "dependencies": null,
+    "stringResources": []
+}
