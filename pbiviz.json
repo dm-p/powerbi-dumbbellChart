@@ -4,7 +4,7 @@
         "displayName": "Dumbbell Chart",
         "guid": "dumbbellChartFCE0F80F94D447908C89DC6586BAB223",
         "visualClassName": "Visual",
-        "version": "1.0.0",
+        "version": "1.0.1",
         "description": "Compare changes between multiple categories and series on the same axis.",
         "supportUrl": "https://github.com/dm-p/powerbi-dumbbellChart",
         "gitHubUrl": ""

@@ -6,7 +6,7 @@
     "package": "pbiviz package",
     "lint": "tslint -c tslint.json -p tsconfig.json"
   },
-  "dependencies": {
+  "devDependencies": {
     "@babel/runtime": "7.6.0",
     "@babel/runtime-corejs2": "7.6.0",
     "@types/d3": "5.7.2",
@@ -16,9 +16,7 @@
     "powerbi-visuals-utils-dataviewutils": "2.2.1",
     "powerbi-visuals-utils-formattingutils": "^4.7.0",
     "powerbi-visuals-utils-interactivityutils": "^5.7.0",
-    "powerbi-visuals-utils-tooltiputils": "^2.4.0"
-  },
-  "devDependencies": {
+    "powerbi-visuals-utils-tooltiputils": "^2.4.0",
     "ts-loader": "6.1.0",
     "tslint": "^5.18.0",
     "tslint-microsoft-contrib": "^6.2.0",

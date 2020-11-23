@@ -77,7 +77,7 @@ import { ICategory, IGroupDataPoint, IGroupBase, IViewModel } from './viewModel'
             private handleSelectionClick(
                 d: ICategory | IGroupBase
             ) {
-                const mouseEvent: MouseEvent = getEvent() as MouseEvent || window.event as MouseEvent;
+                const mouseEvent: MouseEvent = <MouseEvent>getEvent() || <MouseEvent>window.event;
                 mouseEvent && this.selectionHandler.handleSelection(
                     d,
                     mouseEvent.ctrlKey
@@ -92,7 +92,7 @@ import { ICategory, IGroupDataPoint, IGroupBase, IViewModel } from './viewModel'
             handleContextMenu(
                 d: ICategory | IGroupBase
             ) {
-                const mouseEvent: MouseEvent = getEvent() as MouseEvent || window.event as MouseEvent;
+                const mouseEvent: MouseEvent = <MouseEvent>getEvent() || <MouseEvent>window.event;
                 mouseEvent.preventDefault();
                 mouseEvent && this.selectionHandler.handleContextMenu(
                     d,
@@ -111,7 +111,7 @@ import { ICategory, IGroupDataPoint, IGroupBase, IViewModel } from './viewModel'
                     clearCatcherSelection
                 } = this.options;
                 clearCatcherSelection.on('click', () => {
-                    const mouseEvent: MouseEvent = getEvent() as MouseEvent || window.event as MouseEvent;
+                    const mouseEvent: MouseEvent = <MouseEvent>getEvent() || <MouseEvent>window.event;
                     mouseEvent && this.selectionHandler.handleClearSelection();
                 });
             }
