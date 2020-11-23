@@ -47,7 +47,7 @@ import { ITooltipServiceWrapper, createTooltipServiceWrapper, TooltipEventArgs }
 
 import { VisualSettings } from './settings';
 import { IGroupDataPoint, ViewModelManager } from './viewModel';
-import { DomManager } from './dom';
+import { DomManager } from './DomManager';
 import { BehaviorManager, IDumbbellBehaviorOptions } from './behavior';
 
 export class Visual implements IVisual {

@@ -188,9 +188,23 @@ import * as d3Scale from 'd3-scale';
             private host: IVisualHost;
         // Generic margin padding
             private static MarginPad = 15;
+        // Category column metadata
+            private categoryColumn: powerbi.DataViewCategoryColumn;
+        // Grouped values from the dataView
+            private valueGroupings: powerbi.DataViewValueColumns;
 
             constructor(host: IVisualHost) {
                 this.host = host;
+            }
+
+        /**
+         * Update the class properties that hold the objects of interest from the dataView
+         *
+         * @param dataView  - dataView from update options
+         */
+            private updateRoleMetadata(dataView: DataView) {
+                this.categoryColumn = dataView.categorical.categories[0];
+                this.valueGroupings = dataView.categorical.values;
             }
 
         /**
@@ -201,188 +215,235 @@ import * as d3Scale from 'd3-scale';
          */
             mapDataView(dataView: DataView, settings: VisualSettings) {
                 // Get any existing selection info prior to re-building
-                    const initalSelection = this.getSelectableDataPoints();
+                    const initialSelection = this.getSelectableDataPoints();
                 // Declare empty viewModel
-                    const viewModel = this.getNewViewModel(settings);
-                // For safety's sake, handle the situation where we might not have validated beforehand, so
-                // that any calling function gets an empty view model and can fail gracefully.
-                    viewModel.isValid = this.viewModel.isValid = this.isDataViewValid(dataView);
-                    if (!viewModel.isValid) return;
-                // We need to get the min/max extents of all values in the supplied data. We'll instantiate two variables
-                // here to track this and as we encounter values, we can replace them with new values if they fall outside
-                // the current ranges. These are undefined so that we can deal with minimum values in the data that are 
-                // over zero.
-                    let datasetMinValue: number,
-                        datasetMaxValue: number;
-                // Obtain the category column metadata (incl. data values)
-                    const categoryColumn =  dataView.categorical.categories[0];
-                // Obtain the value groupings (incl. all values)
-                    const valueGroupings = dataView.categorical.values;
+                    this.viewModel = this.getNewViewModel(settings);
+                // Just in case we didn't pre-validate, check for validity and return an "empty" ViewModel if not
+                    this.viewModel.isValid = this.viewModel.isValid = this.isDataViewValid(dataView);
+                    if (!this.viewModel.isValid) return;
+                // Update metadata
+                    this.updateRoleMetadata(dataView);
                 // Confirm whether the visual has a selection applied prior to re-build
-                    viewModel.hasSelection = initalSelection.filter((dp) => dp.selected).length > 0;
+                    this.viewModel.hasSelection = initialSelection.filter((dp) => dp.selected).length > 0;
                 // Check for the presence of highlights in measure values
-                    viewModel.hasHighlights = valueGroupings.filter((vg) => vg.highlights).length > 0;
-                // Helper to look in the selection details for existence of selected status
-                    const isSelected = (selectionId: ISelectionId): boolean => 
-                            initalSelection?.find((dp) => selectionId.equals(<ISelectionId>dp.identity))?.selected;
+                    this.viewModel.hasHighlights = this.valueGroupings.filter((vg) => vg.highlights).length > 0;
                 // Get the primary measure's format string
-                    viewModel.primaryFormatString = dataView.metadata.columns
+                    this.viewModel.primaryFormatString = dataView.metadata.columns
                             .find((c) => c.roles.measure && !c.groupName)?.format ?? settings.dataPoints.formatStringMissing;
-                // Traverse the data view and map.
-                // For each category value, we can use its index to access its corresponding value in each array of values
-                // in each categorical.values grouping and bring it in.
-                // We could do this more optimially but breaking into steps for learning purposes.
-                    categoryColumn.values.forEach((cv, ci) => {
-                            // Category name from current array value. The type is a powerbi.PrimitiveValue, which needs to
-                            // be cast to string to fit our view model spec.
-                                const categoryName = <string>cv;
-                            // We need to get the min/max extents of the group values for the category, so we can track this
-                            // using variables in this part of the mapping process and will reset when we hit the next category.
-                                let categoryMinValue: number,
-                                    categoryMaxValue: number;
-                            // Build our Selection ID for this category
-                                const categorySelectionId = this.host.createSelectionIdBuilder()
-                                        .withCategory(categoryColumn, ci)
-                                        .createSelectionId();
-                            // The number of entries in the categorical.values array denotes how many groups we have in each
-                            // category, so we can iterate over these too and use the category index from the outer foreach
-                            // to access the correct measure value from each group's values array.
-                                const groups: IGroupDataPoint[] = valueGroupings.grouped().map((g, gi) => {
-                                    // Get our measure column (which is the first values array element)
-                                        const measure = g.values.find((m) => m.source.roles.measure);
-                                    // Get any tooltip columns (0..many)
-                                        const tooltips = g.values.filter((tt) => tt.source.roles.tooltips);
-                                    // Get group name
-                                        const groupName = <string>g.name;
-                                    // Series-level selection ID
-                                        const groupSelectionId = this.host.createSelectionIdBuilder()
-                                                .withSeries(valueGroupings, g)
-                                                .createSelectionId();
-                                    // Data point-level selection ID
-                                        const dataPointSelectionId = this.host.createSelectionIdBuilder()
-                                                .withCategory(categoryColumn, ci)
-                                                .withSeries(valueGroupings, g)
-                                                .withMeasure(measure.source.queryName)
-                                                .createSelectionId();
-                                    // Manage highlight status for data point
-                                        const pointHighlighted = viewModel.hasHighlights && measure.highlights[ci] !== null;
-                                    // Get current value. Similar to category, it needs to be type-cast. As we have restricted
-                                    // valid data types in our data roles, we know it's safe to cast it to a number.
-                                        const groupValue = <number>measure.values[ci];
-                                        const groupValueFormatted = valueFormatter.format(
-                                            groupValue,
-                                            viewModel.primaryFormatString,
-                                            undefined,
-                                            this.host.locale
-                                        );
-                                    // If our data is cross-highlighted, obtain the highlight value
-                                        const pointHighlightedValue = pointHighlighted && <number>measure.highlights[ci];
-                                        const pointHighlightedValueFormatted = valueFormatter.format(
-                                            pointHighlightedValue,
-                                            viewModel.primaryFormatString,
-                                            undefined,
-                                            this.host.locale
-                                        );
-                                    // Set group min/max to measure value if it's at the extremes
-                                        categoryMinValue = Math.min(categoryMinValue || groupValue, groupValue);
-                                        categoryMaxValue = Math.max(categoryMaxValue || groupValue, groupValue);
-                                    // Handle colour selection. Look in the grouped objects, or using the host services to access 
-                                    // the report's color palette and assign a color by name. This will use the next available color
-                                    // if not already used, which means that when a group name is re-encountered on subsequent
-                                    // categories, Power BI will assign the already reserved color code.
-                                        const color = getFillColorByPropertyName(
-                                            g.objects?.dataPoints,
-                                            'fillColor',
-                                            this.host.colorPalette.getColor(groupName).value
-                                        );
-                                    // Add tooltip data
-                                        let tooltipData: VisualTooltipDataItem[] = [
-                                            {
-                                                header: `${categoryName} - ${groupName}`,
-                                                displayName: measure.source.displayName,
-                                                value: `${groupValueFormatted}`,
-                                                color: color
-                                            }
-                                        ];
-                                    // If there's a highlight, we should add that in
-                                        if (pointHighlighted) {
-                                            tooltipData.push({
-                                                displayName: 'Highlighted',
-                                                value: `${pointHighlightedValueFormatted}`,
-                                                color: color,
-                                                opacity: '0'
-                                            });
-                                        }
-                                    // Add any other measure values from the tooltips data role
-                                        tooltips.forEach((tt) => {
-                                            tooltipData.push({
-                                                displayName: tt.source.displayName,
-                                                value: `${valueFormatter.format(
-                                                    tt.values[ci],
-                                                    tt.source.format ?? settings.dataPoints.formatStringMissing,
-                                                    undefined,
-                                                    this.host.locale
-                                                )}`,
-                                                color: color,
-                                                opacity: '0'
-                                            });
-                                        });
-                                    // On the first pass through categories, make sure that our distinct group list is populated
-                                        if (ci === 0) {
-                                            // Manage highlight status for group/data label
-                                                const groupHighlighted = viewModel.hasHighlights &&
-                                                        measure.highlights.filter((h) => h !== null).length === measure.highlights.length;
-                                            viewModel.groups.push({
-                                                name: groupName,
-                                                color: color,
-                                                groupSelectionId: groupSelectionId,
-                                                value: groupValue,
-                                                identity: groupSelectionId,
-                                                selected: isSelected(groupSelectionId),
-                                                highlighted: groupHighlighted
-                                            });
-                                        }
-                                    // Return a valid IGroup for this iteration.
-                                        return {
-                                            name: groupName,
-                                            groupSelectionId: groupSelectionId,
-                                            dataPointSelectionId: dataPointSelectionId,
-                                            value: groupValue,
-                                            valueFormatted: groupValueFormatted,
-                                            highlightedValue: pointHighlightedValue,
-                                            highlightedValueFormatted: pointHighlightedValueFormatted,
-                                            color: color,
-                                            identity: dataPointSelectionId,
-                                            selected: isSelected(dataPointSelectionId),
-                                            tooltipData: tooltipData,
-                                            highlighted: pointHighlighted
-                                        }
-                                });
-                        // Resolve dataset min/max based on discovered group min/max
-                            datasetMinValue = Math.min(datasetMinValue || categoryMinValue, categoryMinValue);
-                            datasetMaxValue = Math.max(datasetMaxValue || categoryMaxValue, categoryMaxValue);
-                        // Derive the highlight status, based on our logic (only highlight if all data points are also highlighted)
-                            const categoryHighlighted = viewModel.hasHighlights &&
-                                    groups.filter((g) => g.highlighted).length === groups.length;
-                        // Push the category object into the view model's categories array with the correct properties.
-                            viewModel.categories.push({
-                                name: categoryName,
-                                groups: groups,
-                                min: categoryMinValue,
-                                max: categoryMaxValue,
-                                selectionId: categorySelectionId,
-                                identity: categorySelectionId,
-                                selected: isSelected(categorySelectionId),
-                                highlighted: categoryHighlighted
-                            });
-                    });
-                // Update the dataset min and max values
-                    viewModel.minValue = datasetMinValue;
-                    viewModel.maxValue = datasetMaxValue;
+                // Traverse each category entry in the data view and map it to our ViewModel. For each category value, we can
+                // use its index to access its corresponding entry in each categorical.values grouping and bring it in.
+                    this.mapCategoryDataToViewModel(initialSelection);
                 // Assign new viewModel
-                    this.viewModel = viewModel;
+                    this.viewModel = this.viewModel;
             }
         
+        /**
+         * Enumerate the `cataegories` in the dataView and map the majority of our ViewModel data.
+         *
+         * @param initialSelection  - all selectable data points to inspect
+         */
+            private mapCategoryDataToViewModel(initialSelection: interactivitySelectionService.SelectableDataPoint[]) {
+                this.categoryColumn.values.forEach((cv, ci) => {
+                    // Category name from current array value. Needs tobe cast to string to fit our view model spec.
+                        const categoryName = <string>cv;
+                    // We need to get the min/max extents of the group values for the category, so we can track this
+                    // using variables in this part of the mapping process and will reset when we hit the next category.
+                        let categoryMinValue: number,
+                            categoryMaxValue: number;
+                    // Build our Selection ID for this category
+                        const categorySelectionId = this.getCategorySelectionId(ci);
+                    // The number of elements in categorical.values = the number of groups in each category. We can iterate
+                    // these and use the outer category index to extract the correct value from each group's array.
+                        const groups: IGroupDataPoint[] = this.valueGroupings.grouped().map((g, gi) => {
+                            // Get our measure column (which is the first values array element)
+                                const measure = g.values.find((m) => m.source.roles.measure);
+                            // Get any tooltip columns (0..many)
+                                const tooltips = g.values.filter((tt) => tt.source.roles.tooltips);
+                            // Get group name
+                                const groupName = <string>g.name;
+                            // Series-level selection ID
+                                const groupSelectionId = this.getGroupSelectionId(g);
+                            // Data point-level selection ID
+                                const dataPointSelectionId = this.getDataPointSelectionId(ci, g, measure);
+                            // Manage highlight status for data point
+                                const pointHighlighted = this.viewModel.hasHighlights && measure.highlights[ci] !== null;
+                            // As we have restricted valid data types in our data roles, we know it's safe to cast it to a number.
+                                const groupValue = <number>measure.values[ci];
+                                const groupValueFormatted = valueFormatter.format(groupValue, this.viewModel.primaryFormatString,
+                                    undefined, this.host.locale);
+                            // If our data is cross-highlighted, obtain the highlight value
+                                const pointHighlightedValue = pointHighlighted && <number>measure.highlights[ci];
+                                const pointHighlightedValueFormatted = valueFormatter.format(pointHighlightedValue,
+                                    this.viewModel.primaryFormatString, undefined, this.host.locale);
+                            // Set group min/max to measure value if it's at the extremes
+                                categoryMinValue = Math.min(categoryMinValue || groupValue, groupValue);
+                                categoryMaxValue = Math.max(categoryMaxValue || groupValue, groupValue);
+                            // Handle colour selection. Look in the grouped objects, or using the host services to access 
+                            // the report's color palette and assign a color by name.
+                                const color = getFillColorByPropertyName(g.objects?.dataPoints,'fillColor',
+                                    this.host.colorPalette.getColor(groupName).value);
+                            // Add tooltip data
+                                let tooltipData = this.getTooltipData(categoryName, groupName, measure, groupValueFormatted,
+                                    color, pointHighlighted, pointHighlightedValueFormatted, tooltips, ci);
+                            // On the first pass through categories, make sure that our distinct group list is populated
+                                if (ci === 0) {
+                                    // Manage highlight status for group/data label
+                                        const groupHighlighted = this.viewModel.hasHighlights &&
+                                                measure.highlights.filter((h) => h !== null).length === measure.highlights.length;
+                                    this.viewModel.groups.push({
+                                        name: groupName,
+                                        color: color,
+                                        groupSelectionId: groupSelectionId,
+                                        value: groupValue,
+                                        identity: groupSelectionId,
+                                        selected: this.isSelected(initialSelection, groupSelectionId),
+                                        highlighted: groupHighlighted
+                                    });
+                                }
+                            // Return a valid IGroup for this iteration.
+                                return {
+                                    name: groupName,
+                                    groupSelectionId: groupSelectionId,
+                                    dataPointSelectionId: dataPointSelectionId,
+                                    value: groupValue,
+                                    valueFormatted: groupValueFormatted,
+                                    highlightedValue: pointHighlightedValue,
+                                    highlightedValueFormatted: pointHighlightedValueFormatted,
+                                    color: color,
+                                    identity: dataPointSelectionId,
+                                    selected: this.isSelected(initialSelection, dataPointSelectionId),
+                                    tooltipData: tooltipData,
+                                    highlighted: pointHighlighted
+                                }
+                        });
+                    // Update the dataset min and max values based on discovered group min/max
+                        this.viewModel.minValue = Math.min(this.viewModel.minValue || categoryMinValue, categoryMinValue);
+                        this.viewModel.maxValue = Math.max(this.viewModel.maxValue || categoryMaxValue, categoryMaxValue);
+                    // Derive the highlight status, based on our logic (only highlight if all data points are also highlighted)
+                        const categoryHighlighted = this.viewModel.hasHighlights &&
+                                groups.filter((g) => g.highlighted).length === groups.length;
+                    // Push the category object into the view model's categories array with the correct properties.
+                        this.viewModel.categories.push({
+                            name: categoryName,
+                            groups: groups,
+                            min: categoryMinValue,
+                            max: categoryMaxValue,
+                            selectionId: categorySelectionId,
+                            identity: categorySelectionId,
+                            selected: this.isSelected(initialSelection, categorySelectionId),
+                            highlighted: categoryHighlighted
+                        });
+                });
+            }
+
+        /**
+         * For an array of selectable data points, determine if the specificed selectionId is currently selected or not.
+         *
+         * @param initialSelection  - all selectable data points to inspect
+         * @param selectionId       - selectionId to search for
+         */
+            private isSelected(
+                initialSelection: interactivitySelectionService.SelectableDataPoint[],
+                selectionId: ISelectionId
+            ): boolean {
+                return initialSelection?.find((dp) => selectionId.equals(<ISelectionId>dp.identity))?.selected;
+            }
+
+        /**
+         * Generate the selectionId for a data point (intersection of category, grouing and measure).
+         *
+         * @param ci        - current category index
+         * @param g         - current column group
+         * @param measure   - measure metadata
+         */
+            private getDataPointSelectionId(ci: number, g: powerbi.DataViewValueColumnGroup, measure: powerbi.DataViewValueColumn) {
+                return this.host.createSelectionIdBuilder()
+                    .withCategory(this.categoryColumn, ci)
+                    .withSeries(this.valueGroupings, g)
+                    .withMeasure(measure.source.queryName)
+                    .createSelectionId();
+            }
+
+        /**
+         * Generate a selectionIf from the dataView for the specified column grouping.
+         *
+         * @param g     - current column group
+         */
+            private getGroupSelectionId(g: powerbi.DataViewValueColumnGroup) {
+                return this.host.createSelectionIdBuilder()
+                    .withSeries(this.valueGroupings, g)
+                    .createSelectionId();
+            }
+
+        /**
+         * Generate a selectionId from the dataView for the specified category index.
+         *
+         * @param ci    - current category index
+         */
+            private getCategorySelectionId(ci: number) {
+                return this.host.createSelectionIdBuilder()
+                    .withCategory(this.categoryColumn, ci)
+                    .createSelectionId();
+            }
+
+        /**
+         * For a data point and configuration, construct an array of pertinent tooltip information for it.
+         *
+         * @param categoryName                      - tooltip category name
+         * @param groupName                         - tooltip group/series name
+         * @param measure                           - current measure metadata
+         * @param groupValueFormatted               - formatted data point value
+         * @param color                             - resolved data point color
+         * @param pointHighlighted                  - flag to indicate whether data point is currently highlighted
+         * @param pointHighlightedValueFormatted    - formatted highlighted value (if data point is highlighted)
+         * @param tooltips                          - dataView columns matching the `tooltip` dataRole
+         * @param ci                                - current category index (used for extraction from `values` array)
+         */
+            private getTooltipData(
+                categoryName: string,
+                groupName: string,
+                measure: powerbi.DataViewValueColumn,
+                groupValueFormatted: string,
+                color: string,
+                pointHighlighted: boolean,
+                pointHighlightedValueFormatted: string,
+                tooltips: powerbi.DataViewValueColumn[],
+                ci: number
+            ) {
+                let tooltipData: VisualTooltipDataItem[] = [
+                    {
+                        header: `${categoryName} - ${groupName}`,
+                        displayName: measure.source.displayName,
+                        value: `${groupValueFormatted}`,
+                        color: color
+                    }
+                ];
+                // If there's a highlight, we should add that in
+                if (pointHighlighted) {
+                    tooltipData.push({
+                        displayName: 'Highlighted',
+                        value: `${pointHighlightedValueFormatted}`,
+                        color: color,
+                        opacity: '0'
+                    });
+                }
+                // Add any other measure values from the tooltips data role
+                tooltips.forEach((tt) => {
+                    tooltipData.push({
+                        displayName: tt.source.displayName,
+                        value: `${valueFormatter.format(
+                            tt.values[ci],
+                            tt.source.format ?? this.viewModel.settings.dataPoints.formatStringMissing,
+                            undefined,
+                            this.host.locale
+                        )}`,
+                        color: color,
+                        opacity: '0'
+                    });
+                });
+                return tooltipData;
+            }
+
         /**
          * Traverses the ViewModel for all selectable data points and returns them in a consistent shape for interactivity & behavior.
          */
@@ -431,34 +492,21 @@ import * as d3Scale from 'd3-scale';
                         fontFamily: this.viewModel.settings.categoryAxis.fontFamily,
                         fontSize: `${this.viewModel.settings.categoryAxis.fontSize}pt`
                     };
-                    const categoryTickLabelDimensions = this.getCategoryTickLabelDimensions(
-                        categoryAxisTickTextProperties
-                    );
+                    const categoryTickLabelDimensions = this.getCategoryTickLabelDimensions(categoryAxisTickTextProperties);
                 // Assign our margin values so we can re-use them more easily
                     const margin =
                             this.viewModel.margin =
-                            this.calculateMargins(
-                                categoryTickLabelDimensions,
-                                valueTickLabelDimensions
-                            );
+                            this.calculateMargins(categoryTickLabelDimensions, valueTickLabelDimensions);
                 // Category axis domain (unique values)
                     const categoryAxisDomain = this.viewModel.categories.map((c) => c.name);
                 // Derived range for the value axis, based on margin values
                     const valueAxisRange: [number, number] = [
-                        orientation === 'left'
-                            ?   margin.left
-                            :   viewport.height - margin.bottom,
-                        orientation === 'left'
-                            ?   viewport.width - margin.right
-                            :   margin.top
+                        orientation === 'left' ? margin.left : viewport.height - margin.bottom,
+                        orientation === 'left' ? viewport.width - margin.right : margin.top
                     ];
                     const valueAxisTranslate: ICoordinates = {
-                        x: orientation === 'left'
-                            ?   0
-                            :   margin.left,
-                        y: orientation === 'left'
-                            ?   viewport.height - margin.bottom
-                            :   0
+                        x: orientation === 'left' ? 0 : margin.left,
+                        y: orientation === 'left' ? viewport.height - margin.bottom : 0
                     };
                     const valueAxisTickSize =
                         orientation === 'left'
@@ -466,20 +514,12 @@ import * as d3Scale from 'd3-scale';
                             :   - viewport.width - margin.right - margin.left;
                 // Derived range for the category axis, based on margin values
                     const categoryAxisRange: [number, number] = [
-                        orientation === 'left'
-                            ?   margin.top
-                            :   margin.left,
-                        orientation === 'left'
-                            ?   viewport.height - margin.bottom
-                            :   viewport.width - margin.right
+                        orientation === 'left' ? margin.top : margin.left,
+                        orientation === 'left' ? viewport.height - margin.bottom :viewport.width - margin.right
                     ];
                     const categoryAxisTranslate: ICoordinates = {
-                        x: orientation === 'left'
-                            ?   margin.left
-                            :   0,
-                        y: orientation === 'left'
-                            ?   0
-                            :   viewport.height - margin.bottom
+                        x: orientation === 'left' ? margin.left : 0,
+                        y: orientation === 'left' ? 0 : viewport.height - margin.bottom
                     };
                 // Tick count for value axis
                     const valueAxisTickCount = 3;
@@ -490,10 +530,7 @@ import * as d3Scale from 'd3-scale';
                         scale: d3Scale.scaleBand()
                             .domain(categoryAxisDomain)
                             .range(categoryAxisRange)
-                            .padding(orientation === 'left'
-                                ?   0
-                                :   this.viewModel.settings.categoryAxis.innerPadding / 100
-                            ),
+                            .padding(orientation === 'left' ? 0 : this.viewModel.settings.categoryAxis.innerPadding / 100),
                         translate: categoryAxisTranslate,
                         tickTextProperties: categoryAxisTickTextProperties,
                         tickLabelDimensions: categoryTickLabelDimensions

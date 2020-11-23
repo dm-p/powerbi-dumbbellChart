@@ -1,8 +1,8 @@
 import powerbi from 'powerbi-visuals-api';
 import IVisualHost = powerbi.extensibility.visual.IVisualHost;
 
-import { ChartManager } from './chart';
-import { LandingPageManager } from './landing';
+import { ChartManager } from './ChartManager';
+import { LandingPageManager } from './LandingPageManager';
 
     export class DomManager {
 

@@ -152,124 +152,62 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint, Ax
                 const visualData = this.plotContainer
                     .selectAll('.category')
                         .data(viewModel.categories)
-                        .join(
-                            enter => {
+                        .join(enter => {
                                 // Create grouping element
                                     const group = enter.append('g')
                                         .classed('category', true)
-                                        .call(
-                                            this.transformCategoryGroup,
-                                            viewModel.categoryAxis.scale,
-                                            orientation
-                                        );
+                                        .call(this.transformCategoryGroup, viewModel.categoryAxis.scale, orientation);
                                 // Add line
-                                    group
-                                        .append('line')
-                                            .classed('dumbbellLine', true)
-                                            .call(
-                                                this.transformDumbbellLine,
-                                                viewModel.categoryAxis.scale,
-                                                viewModel.valueAxis.scale,
-                                                viewModel.settings.connectingLines,
-                                                orientation,
-                                                viewModel.shouldDimPoint,
-                                                transitions
-                                            );
-
+                                    group.append('line')
+                                        .classed('dumbbellLine', true)
+                                        .call(this.transformDumbbellLine, viewModel.categoryAxis.scale, viewModel.valueAxis.scale,
+                                            viewModel.settings.connectingLines, orientation, viewModel.shouldDimPoint, transitions);
                                 // Add circles for data points
-                                    group
-                                        .selectAll('.dumbbellPoint')
+                                    group.selectAll('.dumbbellPoint')
                                         .data((d) => d.groups)
                                         .join('circle')
                                             .classed('dumbbellPoint', true)
-                                            .call(
-                                                this.transformDumbbellCircle,
-                                                viewModel.categoryAxis.scale,
-                                                viewModel.valueAxis.scale,
-                                                viewModel.settings.dataPoints.radius,
-                                                orientation,
-                                                viewModel.shouldDimPoint,
-                                                transitions
-                                            );
-
+                                            .call(this.transformDumbbellCircle, viewModel.categoryAxis.scale, viewModel.valueAxis.scale,
+                                                viewModel.settings.dataPoints.radius, orientation, viewModel.shouldDimPoint, transitions);
                                 // Add data labels for first category
-                                    group
-                                        .filter((d, di) => di === 0)
+                                    group.filter((d, di) => di === 0)
                                         .selectAll('.dataLabel')
                                         .data(viewModel.groups)
                                         .join('text')
                                             .classed('dataLabel', true)
-                                            .call(
-                                                this.transformDataLabel,
-                                                viewModel.categoryAxis.scale,
-                                                viewModel.valueAxis.scale,
-                                                viewModel.settings.dataPoints.radius,
-                                                orientation,
-                                                viewModel.settings.dataLabels.show,
-                                                viewModel.shouldDimPoint,
-                                                transitions
-                                            );
-
+                                            .call(this.transformDataLabel, viewModel.categoryAxis.scale, viewModel.valueAxis.scale,
+                                                viewModel.settings.dataPoints.radius, orientation, viewModel.settings.dataLabels.show,
+                                                viewModel.shouldDimPoint, transitions);
                                 // Group element is used for any further operations
                                     return group;
                             },
                             update => {
                                 // Re-position groups
-                                    update.call(
-                                        this.transformCategoryGroup,
-                                        viewModel.categoryAxis.scale,
-                                        orientation
-                                    );
+                                    update.call(this.transformCategoryGroup, viewModel.categoryAxis.scale, orientation);
                                 // Re-position line coordinates
-                                    update
-                                        .select('.dumbbellLine')
-                                        .call(
-                                            this.transformDumbbellLine,
-                                            viewModel.categoryAxis.scale,
-                                            viewModel.valueAxis.scale,
-                                            viewModel.settings.connectingLines,
-                                            orientation,
-                                            viewModel.shouldDimPoint,
-                                            transitions
-                                        );
+                                    update.select('.dumbbellLine')
+                                        .call(this.transformDumbbellLine, viewModel.categoryAxis.scale, viewModel.valueAxis.scale,
+                                            viewModel.settings.connectingLines, orientation, viewModel.shouldDimPoint, transitions);
                                 // Re-position circle coordinates
-                                    update
-                                        .selectAll('.dumbbellPoint')
+                                    update.selectAll('.dumbbellPoint')
                                         .data((d) => d.groups)
                                         .join('circle')
                                             .classed('dumbbellPoint', true)
-                                            .call(
-                                                this.transformDumbbellCircle,
-                                                viewModel.categoryAxis.scale,
-                                                viewModel.valueAxis.scale,
-                                                viewModel.settings.dataPoints.radius,
-                                                orientation,
-                                                viewModel.shouldDimPoint,
-                                                transitions
-                                            );
+                                            .call(this.transformDumbbellCircle, viewModel.categoryAxis.scale, viewModel.valueAxis.scale,
+                                                viewModel.settings.dataPoints.radius, orientation, viewModel.shouldDimPoint, transitions);
                                 // Re-position data labels
-                                    update
-                                        .filter((d, di) => di === 0)
+                                    update.filter((d, di) => di === 0)
                                         .selectAll('.dataLabel')
                                         .data(viewModel.groups)
                                         .join('text')
                                             .classed('dataLabel', true)
-                                            .call(
-                                                this.transformDataLabel,
-                                                viewModel.categoryAxis.scale,
-                                                viewModel.valueAxis.scale,
-                                                viewModel.settings.dataPoints.radius,
-                                                orientation,
-                                                viewModel.settings.dataLabels.show,
-                                                viewModel.shouldDimPoint,
-                                                transitions
-                                            );
+                                            .call(this.transformDataLabel, viewModel.categoryAxis.scale, viewModel.valueAxis.scale,
+                                                viewModel.settings.dataPoints.radius, orientation, viewModel.settings.dataLabels.show,
+                                                viewModel.shouldDimPoint, transitions);
                                 // Group element is used for any further operations
                                     return update;
                             },
-                            exit => {
-                                exit.remove();
-                            }
+                            exit => { exit.remove(); }
                         );
                 // Handle all promised transitions and then signal we've finished rendering
                     Promise.all(transitions)
@@ -380,7 +318,7 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint, Ax
                         transitions.push(
                             element
                                 .classed('dimmed', shouldDimPoint(d))
-                                .transition(ChartManager.HandleTransition())
+                                .transition(ChartManager.handleTransition())
                                     .attr('x1', orientation === 'left'
                                                 ?   valueScale(d.min)
                                                 :   midpoint
@@ -433,7 +371,7 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint, Ax
                         transitions.push(
                             element
                                 .classed('dimmed', shouldDimPoint(d))
-                                .transition(ChartManager.HandleTransition())
+                                .transition(ChartManager.handleTransition())
                                     .attr('cx', orientation === 'left'
                                                 ?   valueScale(d.highlighted ? d.highlightedValue : d.value)
                                                 :   midpoint
@@ -479,7 +417,7 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint, Ax
                         transitions.push(
                             element
                                 .classed('dimmed', shouldDimPoint(d))
-                                .transition(ChartManager.HandleTransition())
+                                .transition(ChartManager.handleTransition())
                                     .attr('x', orientation === 'left'
                                                 ?   valueScale(d.value)
                                                 :   midpoint + radius
@@ -510,7 +448,7 @@ import { IViewModel, ICategory, IGroupDataPoint, IGroupBase, VisualDataPoint, Ax
          *
          * @param duration  - time (in ms) for duration to take place
          */
-            private static HandleTransition(duration: number = ChartManager.DefaultTransitionDuration) {
+            private static handleTransition(duration: number = ChartManager.DefaultTransitionDuration) {
                 return d3Transition.transition()
                     .duration(duration);
             }
